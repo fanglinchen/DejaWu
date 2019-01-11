@@ -1,6 +1,6 @@
 <h1 align="center">
   <a href="https://github.com/fanglinchen/DejaWu" title="DejaWu">
-    <img alt="DejaWu" src="https://github.com/posquit0/Awesome-CV/raw/master/assets/128.png" width="200px" height="200px" />
+    <img alt="DejaWu" src="https://github.com/fanglinchen/DejaWu/raw/master/assets/128.png" width="200px" height="200px" />
   </a>
   <br />
   DejaWu
