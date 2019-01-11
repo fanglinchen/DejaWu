@@ -3,8 +3,8 @@
     <img alt="DejaWu" src="https://github.com/fanglinchen/DejaWu/raw/master/assets/128.png" width="100px" height="100px" />
   </a>
   <br />
-  Deja Wu
+  Déjà Wù
 </h1>
 
-Deja Wu is a chrome extension that can help users find stuff they've seen. [ [Scenario Sheet](https://docs.google.com/document/d/1_vBY0j2QEbjRc0NlRFsm7qUONufinM4VB0Kkb7f8Zcs/edit?usp=sharing) ]
+Déjà Wù is a chrome extension that can help users find stuff they've seen. [ [Scenario Sheet](https://docs.google.com/document/d/1_vBY0j2QEbjRc0NlRFsm7qUONufinM4VB0Kkb7f8Zcs/edit?usp=sharing) ]
 
