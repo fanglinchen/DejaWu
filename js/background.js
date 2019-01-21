@@ -349,4 +349,26 @@ function binarySearch(arr, value, lt, gt, i, j) {
     return binarySearch(arr, value, lt, gt, i, j);
 }
 
+/**
+ * Associate the current information contained in the keyboard, picture or text, with the present time and the current
+ * page. The current time and page are deployed. An object of corresponding fields are returned.
+ * @returns {date:*, href:*, info: *}
+ */
+function recordClipBoard()
+{
+    let text;
+    //The current date.
+    let date = new Date();
+    //The current url.
+    let url = window.location.href;
+    try
+    {
+        text = navigator.clipboard.readText();
+    }catch(exc)
+    {
+        console.error("Unable to Read Clipboard Text!");
+    }
+    return {"date":date, "href":url, "info": text};
+}
+
 init();
