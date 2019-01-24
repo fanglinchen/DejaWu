@@ -18,3 +18,8 @@ window.setTimeout((function(){
         "title":document.title,
     });
 }), 1000);
+
+console.log('Running?');
+//Sending a request succeeding a "copy" action on the current page.
+document.addEventListener('copy',(eve)=>{console.log('Ever Called?');chrome.extension.sendRequest(
+                                {event:"copy", url:document.location.href, date: new Date()})},true);
