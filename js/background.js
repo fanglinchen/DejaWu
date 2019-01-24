@@ -20,6 +20,16 @@ function ValidURL(text) {
     return valid.test(text);
 }
 
+//Add a listener that will, in part, executes action corresponding to "copy" action from content script.
+chrome.extension.onRequest.addListener(function(req, sender, sendResponse)
+    {
+        console.log('Entered?')
+        if(req.event=="copy")
+            console.log(recordClipBoard(req.url,req.date));
+        sendResponse("Clipboard Content Recorded!");
+    }
+);
+
 chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -350,20 +360,29 @@ function binarySearch(arr, value, lt, gt, i, j) {
 }
 
 /**
+ *
+ * @param a
+ * @param b
+ */
+function s(a,b)
+{
+
+}
+
+/**
  * Associate the current information contained in the keyboard, picture or text, with the present time and the current
  * page. The current time and page are deployed. An object of corresponding fields are returned.
+ * @param url The url under which the clipboard content is copied.
+ * @param date The time upon which the clipboard action advented.
  * @returns {date:*, href:*, info: *}
  */
-function recordClipBoard()
+function recordClipBoard(url, date)
 {
     let text;
-    //The current date.
-    let date = new Date();
-    //The current url.
-    let url = window.location.href;
     try
     {
         text = navigator.clipboard.readText();
+        console.log(text);
     }catch(exc)
     {
         console.error("Unable to Read Clipboard Text!");
