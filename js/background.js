@@ -143,6 +143,8 @@ function handleMessage(request, sender, sendResponse) {
             }
             else{
                 console.log(request);
+                if (request.type === "mouseup")
+                    request.type = "select"
                 result.behaviorItems.push(request);
                 update(result.behaviorItems);
                 console.log(result.behaviorItems);
