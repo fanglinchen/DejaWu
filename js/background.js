@@ -20,28 +20,20 @@ function ValidURL(text) {
     return valid.test(text);
 }
 
-//Add a listener that will, in part, executes action corresponding to "copy" action from content script.
-chrome.extension.onRequest.addListener(function(req, sender, sendResponse)
-    {
-        console.log('Entered?')
-        if(req.event=="copy")
-            console.log(recordClipBoard(req.url,req.date));
-        sendResponse("Clipboard Content Recorded!");
-    }
-);
 
 chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
-chrome.runtime.onInstalled.addListener(function (object) {
-    chrome.storage.local.get("shouldOpenTab", function(item) {
-        if (Object.keys(item).length == 0) {
-            chrome.tabs.create({url: "https://github.com/fanglinchen/DejaWu"}, function (tab) {
-            });
-            chrome.storage.local.set({"shouldOpenTab": {"dontShow": true}})
+chrome.runtime.onInstalled.addListener(function(details){
+    chrome.storage.local.clear(function() {
+        var error = chrome.runtime.lastError;
+        if (error) {
+            console.error(error);
         }
-    })
+    });
 });
+
+
 
 function acceptInput(text, disposition) {
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
@@ -128,28 +120,34 @@ function assert(condition, message) {
         throw message || "Assertion failed";
     }
 }
+function update(array)
+{
+    //then call the set to update with modified value
+    chrome.storage.sync.set({
+        behaviorItems:array
+    }, function() {
+        console.log("local storage updated");
+        console.log("number of items: " + array.length);
+    });
+}
 
-function handleMessage(data, sender, sendResponse) {
+function handleMessage(request, sender, sendResponse) {
     // data is from message
-    if (data.msg === 'pageContent' && shouldArchive(data)) {
-        delete data.msg;
-        data.text = processPageText(data.text);
-        var time = data.time;
-        var keyValue = {};
-        keyValue[time] = data;
-        chrome.storage.local.set(keyValue, function() {
-            console.log("Stored: " + data.title);
+    let behaviorCodes = ['copy',"mouseup"];
+    if (behaviorCodes.includes(request.type)) {
+        chrome.storage.sync.get(
+            ['behaviorItems'],
+            function(result) {
+            if (!Array.isArray(result.behaviorItems)){
+                update([]);
+            }
+            else{
+                console.log(request);
+                result.behaviorItems.push(request);
+                update(result.behaviorItems);
+                console.log(result.behaviorItems);
+            }
         });
-
-        timeIndex.push(time.toString());
-        preloaded.push(data);
-        chrome.storage.local.set({'index':{'index':timeIndex}});
-    } else if (data.msg === 'setPreferences') {
-        preferences = data.preferences;
-        chrome.storage.local.set({'preferences':preferences});
-    } else if (data.msg === 'setBlacklist') {
-        blacklist = data.blacklist;
-        chrome.storage.local.set({'blacklist':blacklist});
     }
 }
 
@@ -369,25 +367,5 @@ function s(a,b)
 
 }
 
-/**
- * Associate the current information contained in the keyboard, picture or text, with the present time and the current
- * page. The current time and page are deployed. An object of corresponding fields are returned.
- * @param url The url under which the clipboard content is copied.
- * @param date The time upon which the clipboard action advented.
- * @returns {date:*, href:*, info: *}
- */
-function recordClipBoard(url, date)
-{
-    let text;
-    try
-    {
-        text = navigator.clipboard.readText();
-        console.log(text);
-    }catch(exc)
-    {
-        console.error("Unable to Read Clipboard Text!");
-    }
-    return {"date":date, "href":url, "info": text};
-}
 
 init();
