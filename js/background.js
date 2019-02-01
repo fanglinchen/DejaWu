@@ -25,15 +25,13 @@ chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
 chrome.runtime.onInstalled.addListener(function(details){
-    chrome.storage.local.clear(function() {
+chrome.storage.local.clear(function() {
         var error = chrome.runtime.lastError;
         if (error) {
             console.error(error);
         }
     });
-});
-
-
+});//parameter details has no use
 
 function acceptInput(text, disposition) {
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
@@ -53,7 +51,7 @@ function acceptInput(text, disposition) {
     }
 }
 
-function init() {
+/*function init() {
     window.preloaded = [];
     window.cache = {};
     chrome.storage.local.get(['blacklist', 'preferences'], function(items) {
@@ -73,8 +71,8 @@ function init() {
             window.preferences = obj;
         }
     });
-
-    chrome.storage.local.get('index', function(items) {
+//???
+   chrome.storage.local.get('index', function(items) {
         var obj = items['index'];
         if (obj === undefined) {
             window.timeIndex = [];
@@ -98,7 +96,7 @@ function init() {
 }
 
 function makePreloaded(index) {
-    var preloaded_index = [];
+   var preloaded_index = [];
     var millis = +CUTOFF_DATE;
     var i = Math.floor(binarySearch(index, millis, LT, GT, 0, index.length));
     for (var j = i; j < index.length; j++) {
@@ -113,44 +111,68 @@ function makePreloaded(index) {
 
         preloaded.sort(function(a,b){return a.time-b.time});
     });
-}
+}*/
 
 function assert(condition, message) {
     if (!condition) {
         throw message || "Assertion failed";
     }
 }
-function update(array)
+function update(array)//array = behaviorItem in content.js
 {
     //then call the set to update with modified value
-    chrome.storage.sync.set({
-        behaviorItems:array
+    chrome.storage.local.set({
+        behaviorItems:array//arry that key =behaviorItems
     }, function() {
         console.log("local storage updated");
         console.log("number of items: " + array.length);
     });
 }
 
-function handleMessage(request, sender, sendResponse) {
+/*function handleMessage(request, sender, sendResponse) {
     // data is from message
     let behaviorCodes = ['copy',"mouseup"];
     if (behaviorCodes.includes(request.type)) {
-        chrome.storage.sync.get(
-            ['behaviorItems'],
+        chrome.storage.local.get(
+            ['behaviorItems'],//get the object from set function
             function(result) {
             if (!Array.isArray(result.behaviorItems)){
                 update([]);
-            }
+            }//???
             else{
                 console.log(request);
                 if (request.type === "mouseup")
                     request.type = "select"
-                result.behaviorItems.push(request);
+                result.behaviorItems.push(request);//???
                 update(result.behaviorItems);
                 console.log(result.behaviorItems);
             }
         });
-    }
+//sendMessage(result.behaviorItems)
+ }
+}*/
+
+//request is behaviorItem in content.js
+function handleMessage(request, sender, sendResponse) {
+    let behaviorCodes = ['copy',"mouseup",];
+    if (behaviorCodes.includes(request.type)) {
+        chrome.storage.local.get(
+            ['behaviorItems'],// get the data whose key =behaviorItems
+            function(result) {
+console.log(result.behaviorItems);//result.behaviorItems is an array
+              if (!Array.isArray(result.behaviorItems)){
+                  update([]);//without this push is undefined?
+              }//???
+              else{
+                  console.log(request);
+                  if (request.type === "mouseup")
+                      request.type = "select"
+                  result.behaviorItems.push(request);//???
+                  update(result.behaviorItems);
+                  console.log(result.behaviorItems);
+              }
+        });
+ }
 }
 
 function omnibarHandler(text, suggest) {
@@ -359,15 +381,15 @@ function binarySearch(arr, value, lt, gt, i, j) {
     return binarySearch(arr, value, lt, gt, i, j);
 }
 
-/**
+/*
  *
- * @param a
- * @param b
- */
+ *@param a
+ *@param b
+
 function s(a,b)
 {
 
 }
 
-
-init();
+*/
+//init();
