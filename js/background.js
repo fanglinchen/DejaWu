@@ -20,7 +20,6 @@ function ValidURL(text) {
     return valid.test(text);
 }
 
-
 chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -36,6 +35,7 @@ chrome.runtime.onInstalled.addListener(function(details){
 
 
 function acceptInput(text, disposition) {
+    console.log("Input given!");
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
     if (!ValidURL(text)) {
         return;
@@ -122,6 +122,7 @@ function assert(condition, message) {
 }
 function update(array)
 {
+    console.log("Updated? ",array);
     //then call the set to update with modified value
     chrome.storage.sync.set({
         behaviorItems:array
@@ -133,28 +134,80 @@ function update(array)
 
 function handleMessage(request, sender, sendResponse) {
     // data is from message
-    let behaviorCodes = ['copy',"mouseup"];
+    let behaviorCodes = ['copy','mouseup'];
     if (behaviorCodes.includes(request.type)) {
         chrome.storage.sync.get(
             ['behaviorItems'],
             function(result) {
-            if (!Array.isArray(result.behaviorItems)){
-                update([]);
-            }
-            else{
-                console.log(request);
-                if (request.type === "mouseup")
-                    request.type = "select"
-                result.behaviorItems.push(request);
-                update(result.behaviorItems);
-                console.log(result.behaviorItems);
-            }
-        });
+                let bhvItems = result.behaviorItems;
+                if (!Array.isArray(bhvItems)) {
+                    update([]);
+                } else {
+                    if (request.type === "mouseup")
+                    {
+                        request.type = "select";
+                        bhvItems.push(request);
+                    }
+                    else if(request.type==="copy")
+                    {
+                        //Back-search the last corresponding highlighting event and
+                        //replace.
+                        for(let i=bhvItems.length-1; i>=0; i--)
+                            if(bhvItems[i].type==="select")
+                            {
+                                bhvItems[i].type = "copy";
+                                //If a code segment is identified.
+                                if(request.datatype==="code")
+                                {
+                                    console.log("Code!!!!!!");
+                                    bhvItems[i].datatype = "code";
+                                }
+                                console.log('Before ',bhvItems);
+                                update(bhvItems);
+                                break;
+                            }
+
+                    }
+                    update(bhvItems);
+                }
+            });
     }
 }
 
-function omnibarHandler(text, suggest) {
-    dispatchSuggestions(text, suggestionsComplete, suggest);
+function omnibarHandler(text, suggest)
+{
+    //Holder for extracted previously copied code segments.
+    let codeSegs = [];
+    //Select code segments.
+    chrome.storage.sync.get(
+        ['behaviorItems'],
+        function(result) {
+            let bhvItems = result.behaviorItems;
+            for(let i=0; i<bhvItems.length; i++)
+            {
+                if(bhvItems[i].datatype==="code")
+                {
+                    codeSegs.push(bhvItems[i].data);
+                }
+            }
+                });
+    let suggestions = [];
+    console.log(codeSegs);
+    console.log(codeSegs.length);
+    console.log(codeSegs[0]);
+    //Push suggestions.
+    for(let i=0; i<codeSegs.length; i++)
+    {
+        console.log("text ",text);
+        console.log("code ",codeSegs[i]);
+        if(codeSegs[i].indexOf(text)!==-1)
+        {
+            console.log("Should be Here!");
+            suggestions.push({content:codeSegs[i], description:"?"});
+        }
+    }
+    suggest(suggestions);
+    //dispatchSuggestions(text, suggestionsComplete, suggest);
 }
 
 function suggestionsComplete(suggestions, shouldDate, suggestCb) {
