@@ -24,15 +24,13 @@ chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
 chrome.runtime.onInstalled.addListener(function(details){
-    chrome.storage.local.clear(function() {
+chrome.storage.local.clear(function() {
         var error = chrome.runtime.lastError;
         if (error) {
             console.error(error);
         }
     });
-});
-
-
+});//parameter details has no use
 
 function acceptInput(text, disposition) {
     console.log("Input given!");
@@ -53,7 +51,7 @@ function acceptInput(text, disposition) {
     }
 }
 
-function init() {
+/*function init() {
     window.preloaded = [];
     window.cache = {};
     chrome.storage.local.get(['blacklist', 'preferences'], function(items) {
@@ -73,8 +71,8 @@ function init() {
             window.preferences = obj;
         }
     });
-
-    chrome.storage.local.get('index', function(items) {
+//???
+   chrome.storage.local.get('index', function(items) {
         var obj = items['index'];
         if (obj === undefined) {
             window.timeIndex = [];
@@ -98,7 +96,7 @@ function init() {
 }
 
 function makePreloaded(index) {
-    var preloaded_index = [];
+   var preloaded_index = [];
     var millis = +CUTOFF_DATE;
     var i = Math.floor(binarySearch(index, millis, LT, GT, 0, index.length));
     for (var j = i; j < index.length; j++) {
@@ -113,49 +111,50 @@ function makePreloaded(index) {
 
         preloaded.sort(function(a,b){return a.time-b.time});
     });
-}
+}*/
 
 function assert(condition, message) {
     if (!condition) {
         throw message || "Assertion failed";
     }
 }
-function update(array)
+function update(array)//array = behaviorItem in content.js
 {
     console.log("Updated? ",array);
     //then call the set to update with modified value
-    chrome.storage.sync.set({
-        behaviorItems:array
+    chrome.storage.local.set({
+        behaviorItems:array//The item named behaviorItems in storage that corresponds to the items.
     }, function() {
         console.log("local storage updated");
         console.log("number of items: " + array.length);
     });
 }
 
-function handleMessage(request, sender, sendResponse) {
+/*function handleMessage(request, sender, sendResponse) {
     // data is from message
     let behaviorCodes = ['copy','mouseup'];
-    if (behaviorCodes.includes(request.type)) {
-        chrome.storage.sync.get(
-            ['behaviorItems'],
+    if (behaviorCodes.includes(request.eventtype)) {
+        chrome.storage.local.get(
+            ['behaviorItems'],//get the object from set function
             function(result) {
+<<<<<<< HEAD
                 let bhvItems = result.behaviorItems;
                 if (!Array.isArray(bhvItems)) {
                     update([]);
                 } else {
-                    if (request.type === "mouseup")
+                    if (request.eventtype === "mouseup")
                     {
-                        request.type = "select";
+                        request.eventtype = "select";
                         bhvItems.push(request);
                     }
-                    else if(request.type==="copy")
+                    else if(request.eventtype==="copy")
                     {
                         //Back-search the last corresponding highlighting event and
                         //replace.
                         for(let i=bhvItems.length-1; i>=0; i--)
-                            if(bhvItems[i].type==="select")
+                            if(bhvItems[i].eventtype==="select")
                             {
-                                bhvItems[i].type = "copy";
+                                bhvItems[i].eventtype = "copy";
                                 //If a code segment is identified.
                                 if(request.datatype==="code")
                                 {
@@ -172,6 +171,43 @@ function handleMessage(request, sender, sendResponse) {
                 }
             });
     }
+=======
+            if (!Array.isArray(result.behaviorItems)){
+                update([]);
+            }//???
+            else{
+                console.log(request);
+                if (request.eventtype === "mouseup")
+                    request.eventtype = "select"
+                result.behaviorItems.push(request);//???
+                update(result.behaviorItems);
+                console.log(result.behaviorItems);
+            }
+        });
+//sendMessage(result.behaviorItems)
+ }
+}*/
+
+//request is behaviorItem in content.js
+function handleMessage(request, sender, sendResponse) {
+    let behaviorCodes = ["copy", "select"];
+    if (behaviorCodes.includes(request.eventtype)) {
+        chrome.storage.local.get(
+            ['behaviorItems'],// get the data whose key =behaviorItems
+            function(result){
+              let bhvItems = result.behaviorItems;
+              if (!Array.isArray(bhvItems))
+              {
+                  update([]);//without this push is undefined?
+              }
+              else{
+                  console.log("request: ", request);
+                  bhvItems.push(request);
+                  update(bhvItems);
+                  console.log(bhvItems);
+              }
+        });
+ }
 }
 
 function omnibarHandler(text, suggest)
@@ -179,34 +215,32 @@ function omnibarHandler(text, suggest)
     //Holder for extracted previously copied code segments.
     let codeSegs = [];
     //Select code segments.
-    chrome.storage.sync.get(
+    chrome.storage.local.get(
         ['behaviorItems'],
         function(result) {
+            //All processing must be included in this callback.
             let bhvItems = result.behaviorItems;
             for(let i=0; i<bhvItems.length; i++)
             {
+                console.log("Be Item: ", bhvItems[i]);
                 if(bhvItems[i].datatype==="code")
                 {
                     codeSegs.push(bhvItems[i].data);
                 }
             }
+            let suggestions = [];
+            //Push suggestions.
+            for(let i=0; i<codeSegs.length; i++)
+            {
+                //If the current sequence typed is included in a code segment.
+                if(codeSegs[i].indexOf(text)!==-1)
+                {
+                    //Content is that filled when selected, description that appears.
+                    suggestions.push({content:codeSegs[i], description:codeSegs[i]});
+                }
+            }
+            suggest(suggestions);
                 });
-    let suggestions = [];
-    console.log(codeSegs);
-    console.log(codeSegs.length);
-    console.log(codeSegs[0]);
-    //Push suggestions.
-    for(let i=0; i<codeSegs.length; i++)
-    {
-        console.log("text ",text);
-        console.log("code ",codeSegs[i]);
-        if(codeSegs[i].indexOf(text)!==-1)
-        {
-            console.log("Should be Here!");
-            suggestions.push({content:codeSegs[i], description:"?"});
-        }
-    }
-    suggest(suggestions);
     //dispatchSuggestions(text, suggestionsComplete, suggest);
 }
 
@@ -412,15 +446,15 @@ function binarySearch(arr, value, lt, gt, i, j) {
     return binarySearch(arr, value, lt, gt, i, j);
 }
 
-/**
+/*
  *
- * @param a
- * @param b
- */
+ *@param a
+ *@param b
+
 function s(a,b)
 {
 
 }
 
-
-init();
+*/
+//init();
