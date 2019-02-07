@@ -212,7 +212,7 @@ function handleMessage(request, sender, sendResponse) {
 
 function omnibarHandler(text, suggest)
 {
-    //Holder for extracted previously copied code segments.
+    //Holder for behavior items that contained copied code segments.
     let codeSegs = [];
     //Select code segments.
     chrome.storage.local.get(
@@ -222,10 +222,9 @@ function omnibarHandler(text, suggest)
             let bhvItems = result.behaviorItems;
             for(let i=0; i<bhvItems.length; i++)
             {
-                console.log("Be Item: ", bhvItems[i]);
                 if(bhvItems[i].datatype==="code")
                 {
-                    codeSegs.push(bhvItems[i].data);
+                    codeSegs.push(bhvItems[i]);
                 }
             }
             let suggestions = [];
@@ -233,11 +232,16 @@ function omnibarHandler(text, suggest)
             for(let i=0; i<codeSegs.length; i++)
             {
                 //If the current sequence typed is included in a code segment.
-                if(codeSegs[i].indexOf(text)!==-1)
+                if(codeSegs[i].data.indexOf(text)!==-1)
                 {
                     //Content is that filled when selected, description that appears.
-                    suggestions.push({content:codeSegs[i], description:codeSegs[i]});
+                    suggestions.push({content:codeSegs[i].data,
+                                        description:codeSegs[i].data});
                 }
+                //Or if the text matches the title above that recorded code.
+                else if(codeSegs[i].title.indexOf(text!==-1))
+                    suggestions.push({content:codeSegs[i].data,
+                        description:codeSegs[i].data});
             }
             suggest(suggestions);
                 });
