@@ -27,7 +27,7 @@ function clipboardHandler(e)
      */
     //A cursor that tracks the hierarchy of elements to see if a <code> tag is present.
     let cur = e.target;
-    while(cur.tagName.toLowerCase()!=="code"&&(cur=cur.parentNode)!==document.body);
+    while(cur.tagName.toLowerCase()!=="code" && (cur=cur.parentNode)!==document.body);
     //If the highest element tracked by the cursor can be ascribed to <code>.
     if(cur.tagName.toLowerCase()==="code")
     {
@@ -72,9 +72,8 @@ function extractSelectionText()
     if (sel)
     {
         //Highlighted content;
-        let content = sel.toString();
         //If no text has been selected, and mouseup was simply trigger by itself.
-        return content;
+        return sel.toString();
     }
 }
 
