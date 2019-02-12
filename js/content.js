@@ -1,3 +1,6 @@
+let lastVideoTime = 0;
+let lastVideoSnippetStartTime = 0;
+
 function newUrlHandler()
 {
     let url = document.location.href;
@@ -91,6 +94,36 @@ function extractSelectionText()
         return sel.toString();
     }
 }
+
+$(document).arrive('video', {existing:true}, function(v){
+    let videoObj = v;
+    videoObj.ontimeupdate = function(){
+        // if there is a big gap between the current play time and the last play time,
+        // user has skipped/rewind the video
+        let behaviorItem;
+        if (Math.abs(videoObj.currentTime - lastVideoTime) > 5) {
+            console.log("change");
+            console.log(lastVideoTime);
+            console.log("snippet:" + lastVideoSnippetStartTime + " ---  " + lastVideoTime);
+            behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime)
+            lastVideoSnippetStartTime = videoObj.currentTime;
+            chrome.runtime.sendMessage(behaviorItem, (response) => {
+                console.log("Message Response: ", response); //Response is undefined.
+            });
+
+            //TODO: handle rewind event.
+        }
+        lastVideoTime = videoObj.currentTime;
+    };
+
+    videoObj.onpause=function(){
+        console.log("paused");
+    };
+
+    videoObj.onended= function () {
+        console.log("ended");
+    }
+});
 
 //Sending a request succeeding a "copy" action on the current page.
 document.addEventListener('copy', clipboardHandler);
