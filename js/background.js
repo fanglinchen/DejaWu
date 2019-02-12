@@ -52,7 +52,7 @@ function update(array)//array = behaviorItem in content.js
 
 //request is behaviorItem in content.js
 function handleMessage(request, sender, sendResponse) {
-    let behaviorCodes = ["copy", "select"];
+    let behaviorCodes = ["copy", "select", 'search'];
     if (behaviorCodes.includes(request.eventtype)) {
         chrome.storage.local.get(
             ['behaviorItems'],// get the data whose key =behaviorItems
@@ -74,9 +74,9 @@ function handleMessage(request, sender, sendResponse) {
 
 function omnibarHandler(text, suggest)
 {
-    //Holder for behavior items that contained copied code segments.
+    // Holder for behavior items that contained copied code segments.
     let codeSegs = [];
-    //Select code segments.
+    // Select code segments.
     chrome.storage.local.get(
         ['behaviorItems'],
         function(result) {

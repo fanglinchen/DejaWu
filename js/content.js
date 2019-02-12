@@ -1,3 +1,19 @@
+function newUrlHandler()
+{
+    let url = document.location.href;
+    let query;
+    if (url.includes("google.com")) {
+        const regex = /(?<=q=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            query = url.match(regex)[0].replace(/\+/g, ' ');
+            let behaviorItem = makeBehaviorItem("search", query);
+            chrome.runtime.sendMessage(behaviorItem, (response) => {
+                console.log("Message Response: ", response); //Response is undefined.
+            });
+        }
+    }
+    //TODO: collect url history here.
+}
 
 function highlightHandler(e)
 {
@@ -6,9 +22,7 @@ function highlightHandler(e)
     //If no content has been selected, ignore.
     if(content==="")
         return;
-    let bhvItm = makeBehaviorItem(e,content);
-    //Modify event type to text-selection.
-    bhvItm["eventtype"] = "select";
+    let bhvItm = makeBehaviorItem("select",content);
     chrome.runtime.sendMessage(bhvItm, (response) => {
         console.log("Message Response: ", response); //Response is undefined.
     });
@@ -21,7 +35,7 @@ function clipboardHandler(e)
     if(content==="")
         return;
     //Store the behavior duplicate in the content of the text selected.
-    let behaviorItem = makeBehaviorItem(e, content);
+    let behaviorItem = makeBehaviorItem("copy", content);
     /*
         The superceding section concerns the detection of a html code element.
      */
@@ -34,6 +48,7 @@ function clipboardHandler(e)
         //Add code indication to datatype.
         behaviorItem["datatype"] = "code";
     }
+    //TODO: add case for image url
     //Send message to the background with modification requirements. The time recorded
     //of the copy event would be that of the highlighted.
     chrome.runtime.sendMessage(behaviorItem, (response) => {
@@ -46,14 +61,14 @@ function clipboardHandler(e)
  * It is a map with the keys "type", the type of browsing event, "data", the content
  * correlated with the event, "time", time of this event, "title", the title of the
  * page, and "url", the hyperlink to that site.
- * @param event The event triggered.
+ * @param event_type event type
  * @param content The content associated with this event.
  * @returns {{data: *, time: Date, type: *, title: string, url: string}}
  */
-function makeBehaviorItem(event, content)
+function makeBehaviorItem(event_type, content)
 {
     return {
-        "eventtype": event.type,
+        "eventtype": event_type,
         "time": new Date(),
         "url": document.location.href,
         "title": document.title,
@@ -80,3 +95,4 @@ function extractSelectionText()
 //Sending a request succeeding a "copy" action on the current page.
 document.addEventListener('copy', clipboardHandler);
 document.addEventListener('mouseup', highlightHandler);
+window.addEventListener("load", newUrlHandler);
