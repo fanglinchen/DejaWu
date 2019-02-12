@@ -95,15 +95,32 @@ function extractSelectionText()
     }
 }
 
+function drawMarker(time_pair,duration){
+
+    let $orangeBar =$(orangeProgressBar);
+    let ratio = time_pair[1]/duration-time_pair[0]/duration,
+        propValue= `scaleX(${ratio})`;
+    $orangeBar.css('left',((time_pair[0]/duration)*100)+'%');
+    $orangeBar.css('transform',propValue);
+    $('div.ytp-play-progress.ytp-swatch-background-color:not(.orangeProgress)').before($orangeBar);
+}
+
+
 $(document).arrive('video', {existing:true}, function(v){
     let videoObj = v;
+    let behaviorItem;
+    behaviorItem = makeBehaviorItem("video_play");
+    chrome.runtime.sendMessage(behaviorItem, (response) => {
+        console.log("Message Response: ", response);
+        console.log("Message Response: ", response.data); //Response is undefined.
+        drawMarker(response.data.split(":"), videoObj.duration);
+    });
+
     videoObj.ontimeupdate = function(){
+
         // if there is a big gap between the current play time and the last play time,
-        // user has skipped/rewind the video
-        let behaviorItem;
+        // the user has skipped/rewind the video
         if (Math.abs(videoObj.currentTime - lastVideoTime) > 5) {
-            console.log("change");
-            console.log(lastVideoTime);
             console.log("snippet:" + lastVideoSnippetStartTime + " ---  " + lastVideoTime);
             behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime)
             lastVideoSnippetStartTime = videoObj.currentTime;
@@ -125,7 +142,6 @@ $(document).arrive('video', {existing:true}, function(v){
     }
 });
 
-//Sending a request succeeding a "copy" action on the current page.
 document.addEventListener('copy', clipboardHandler);
 document.addEventListener('mouseup', highlightHandler);
 window.addEventListener("load", newUrlHandler);

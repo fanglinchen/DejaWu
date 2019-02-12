@@ -95,6 +95,41 @@ function handleMessage(request, sender, sendResponse) {
             }
         )
     }
+    if (request.eventtype ==="video_play"){
+        chrome.storage.local.get(
+            ["snippets"],
+            function(result){
+                console.log(result);
+                let videoSnippets = result.snippets;
+                if (!Array.isArray(videoSnippets))
+                {
+                    console.log("heyyy", "heyy");
+                    updateVideos([]);
+                    sendResponse(null);
+                }
+                else{
+                    console.log(request);
+                    for (let i=0; i<videoSnippets.length; i++)
+                    {
+                        // TODO: handle same video with different parameters
+                        // TODO: handle visualization of multiple snippets
+                        console.log(videoSnippets[i].url);
+                        console.log(request.url);
+                        if (videoSnippets[i].url === request.url){
+
+                            if(videoSnippets[i].data.split(":")[0] !== videoSnippets[i].data.split(":")[1]){
+                                console.log("send", {data: videoSnippets[i].data});
+                                sendResponse({data: videoSnippets[i].data});
+
+                            }
+
+                        }
+                    }
+                }
+            }
+        )
+    }
+    return true;
 }
 
 function omnibarHandler(text, suggest)
