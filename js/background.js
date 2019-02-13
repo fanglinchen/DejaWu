@@ -121,22 +121,20 @@ function handleMessage(request, sender, sendResponse) {
                 }
                 else{
                     console.log(request);
+                    let videoSnippetsArray=[];//define an Array to send
                     for (let i=0; i<videoSnippets.length; i++)
                     {
                         // TODO: handle same video with different parameters
                         // TODO: handle visualization of multiple snippets
-                        console.log(videoSnippets[i].url);
-                        console.log(request.url);
-                        if (videoSnippets[i].url === request.url){
-
-                            if(videoSnippets[i].data.split(":")[0] !== videoSnippets[i].data.split(":")[1]){
-                                console.log("send", {data: videoSnippets[i].data});
-                                sendResponse({data: videoSnippets[i].data});
-
-                            }
-
-                        }
+                        //console.log(videoSnippets[i].url);
+                        //console.log(request.url);
+                        if(videoSnippets[i].data.split(":")[0] !== videoSnippets[i].data.split(":")[1]){
+                          if (videoSnippets[i].url === request.url){
+                            videoSnippetsArray.push(videoSnippets[i].data);
+                          }
+                       }
                     }
+                   sendResponse(videoSnippetsArray);
                 }
             }
         )

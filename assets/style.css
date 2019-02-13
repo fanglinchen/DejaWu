@@ -28,10 +28,8 @@ a.delete:hover {
 
 /* TODO: remove unused styles below The Modal (background) */
 
-.orangeProgress{
+.blueProgress{
     transform: scaleX(0);
-    background-color: orange !important;
+    background-color: blue !important;
     z-index: 35!important;
 }
-
-
