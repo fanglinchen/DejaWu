@@ -1,3 +1,3 @@
-let blueProgressBar = `
-	<div class="ytp-play-progress ytp-swatch-background-color blueProgress"></div>
+let orangeProgressBar = `
+	<div class="ytp-play-progress ytp-swatch-background-color orangeProgress"></div>
 `
