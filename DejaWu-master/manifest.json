@@ -9,16 +9,29 @@
             "matches": [
                 "<all_urls>"
             ],
-            "js": ["js/lib/stopwords_res.js", "js/lib/readability.js", "js/relevanttext.js", "js/content.js"]
+            "js": [
+                "js/lib/jquery.min.js",
+                "js/lib/arrive.min.js",
+                "js/lib/stopwords_res.js",
+                "js/lib/readability.js",
+                "js/relevanttext.js",
+                "js/HTMLelements.js",
+                "js/content.js",
+                "js/lib/bootstrap.min.js",
+                "js/lib/jquery-ui.js"],
+            "css": [
+                "assets/bootstrap.min.css",
+                "assets/style.css"
+            ],
+            "run_at": "document_end",
+            "all_frames": false
         }
     ],
     "permissions": [
         "unlimitedStorage",
         "<all_urls>",
         "storage",
-        "tabs",
-        "clipboardRead",
-        "clipBoardWrite"
+        "tabs"
     ],
     "browser_action": {
         "default_icon": {

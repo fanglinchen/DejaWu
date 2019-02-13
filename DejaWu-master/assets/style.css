@@ -24,3 +24,12 @@ a.delete:hover {
 #clear {
     margin-bottom: 30px;
 }
+
+
+/* TODO: remove unused styles below The Modal (background) */
+
+.blueProgress{
+    transform: scaleX(0);
+    background-color: blue !important;
+    z-index: 35!important;
+}
