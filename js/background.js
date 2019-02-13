@@ -10,17 +10,19 @@ function isValidUrl(text) {
     return valid.test(text);
 }
 
+
 chrome.omnibox.onInputChanged.addListener(omnibarHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
 chrome.runtime.onInstalled.addListener(function(details){
 chrome.storage.local.clear(function() {
-        var error = chrome.runtime.lastError;
-        if (error) {
+    const error = chrome.runtime.lastError;
+    if (error) {
             console.error(error);
         }
     });
 });//parameter details has no use
+
 
 function acceptInput(text, disposition) {
     console.log("Input given!");
@@ -40,6 +42,16 @@ function acceptInput(text, disposition) {
         break;
     }
 }
+
+chrome.contextMenus.removeAll(function() {
+    console.log("contextMenus.removeAll callback");
+    chrome.contextMenus.create(
+        {"title": type,
+            "contexts": ["selection"],
+            "onclick": function(info, tab) {alert(1);}},
+        function() {
+            console.log("ContextMenu.create callback! Error? " + chrome.extension.lastError);});
+});
 
 function updateVideos(array)
 {

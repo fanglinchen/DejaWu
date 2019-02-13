@@ -5,14 +5,14 @@ window.addEventListener('click',function(e){
 });
 
 window.addEventListener('DOMContentLoaded', function() {
-  var quickBlacklist = document.getElementById('quick-blacklist');
+  const quickBlacklist = document.getElementById('quick-blacklist');
   quickBlacklist.addEventListener('click', function() {
     disableIfBlacklisted(true);
   });
 });
 
 function disableIfBlacklisted(add=false){
-  var quickBlacklist = document.getElementById('quick-blacklist');
+  const quickBlacklist = document.getElementById('quick-blacklist');
   chrome.storage.local.get(['blacklist'], function(items) {
     chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function (tabs) {
       var tabUrl = tabs[0].url;

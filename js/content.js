@@ -18,7 +18,7 @@ function newUrlHandler()
     //TODO: collect url history here.
 }
 
-function highlightHandler(e)
+function highlightHandler()
 {
     //Get selected text.
     let content = extractSelectionText();
@@ -42,7 +42,7 @@ function clipboardHandler(e)
     /*
         The superceding section concerns the detection of a html code element.
      */
-    //A cursor that tracks the hierarchy of elements to see if a <code> tag is present.
+    // A cursor that tracks the hierarchy of elements to see if a <code> tag is present.
     let cur = e.target;
     while(cur.tagName.toLowerCase()!=="code" && (cur=cur.parentNode)!==document.body);
     //If the highest element tracked by the cursor can be ascribed to <code>.
