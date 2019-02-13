@@ -151,11 +151,7 @@ $(document).arrive('video', {existing:true}, function(v){
 });
 
 function isVideoAnAD(){
-  if($(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)"){
-    return true;
-  }else{
-    return false;
-  }
+  return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
 
 
