@@ -43,14 +43,19 @@ function acceptInput(text, disposition) {
     }
 }
 
-chrome.contextMenus.removeAll(function() {
+chrome.contextMenus.removeAll(function () {
     console.log("contextMenus.removeAll callback");
     chrome.contextMenus.create(
-        {"title": type,
+        {
+            "title": type,
             "contexts": ["selection"],
-            "onclick": function(info, tab) {alert(1);}},
-        function() {
-            console.log("ContextMenu.create callback! Error? " + chrome.extension.lastError);});
+            "onclick": function (info, tab) {
+                alert(1);
+            }
+        },
+        function () {
+            console.log("ContextMenu.create callback! Error? " + chrome.extension.lastError);
+        });
 });
 
 function updateVideos(array)
