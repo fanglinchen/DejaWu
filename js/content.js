@@ -1,10 +1,12 @@
 let lastVideoTime = 0;
 let lastVideoSnippetStartTime = 0;
+let videoObj;
+let currentUrl;
 
 function highlightHandler()
 {
     //Get selected text.
-    let content = extractSelectionText();
+    let content = extractSelectedText();
     //If no content has been selected, ignore.
     if(content==="")
         return;
@@ -17,7 +19,7 @@ function highlightHandler()
 function clipboardHandler(e)
 {
     //Check for text selection.
-    let content = extractSelectionText();
+    let content = extractSelectedText();
     if(content==="")
         return;
     //Store the behavior duplicate in the content of the text selected.
@@ -43,6 +45,22 @@ function clipboardHandler(e)
 }
 
 /**
+ * Extract selected text. Returns "" if no text selected.
+ * @returns {string}
+ */
+function extractSelectedText()
+{
+    //Text selected.
+    let sel = window.getSelection();
+    if (sel)
+    {
+        //Highlighted content;
+        //If no text has been selected, and mouseup was simply trigger by itself.
+        return sel.toString();
+    }
+}
+
+/**
  * This function makes a customary representation of a user's browsing behavior.
  * It is a map with the keys "type", the type of browsing event, "data", the content
  * correlated with the event, "time", time of this event, "title", the title of the
@@ -56,27 +74,12 @@ function makeBehaviorItem(event_type, content)
     return {
         "eventtype": event_type,
         "time": new Date(),
-        "url": document.location.href,
+        "url": currentUrl,
         "title": document.title,
         "data": content,
     };
 }
 
-/**
- * Extract selected text. Returns "" if no text selected.
- * @returns {string}
- */
-function extractSelectionText()
-{
-    //Text selected.
-    let sel = window.getSelection();
-    if (sel)
-    {
-        //Highlighted content;
-        //If no text has been selected, and mouseup was simply trigger by itself.
-        return sel.toString();
-    }
-}
 
 function drawMarker(time_pair, duration) {
     let $blueBar = $(blueProgressBar);
@@ -87,18 +90,40 @@ function drawMarker(time_pair, duration) {
     $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').before($blueBar);
 }
 
+function removeMarkers(){
+    console.log("remove markers...");
+    $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
+}
 
-$(document).arrive('video', {existing: true}, function (v) {
-    let videoObj = v;
+function loadMarkers(){
+    console.log("load markers...");
     let behaviorItem;
     behaviorItem = makeBehaviorItem("video_play");
     chrome.runtime.sendMessage(behaviorItem, (response) => {
         for (let i = 0; i <= response.length - 1; i++) {
-            console.log("Message Response: ", response[i]); //Response is undefined.
+            console.log("Message Response: ", response[i]);
             drawMarker(response[i].split(":"), videoObj.duration);
         }
     });
+}
 
+function saveQuery(){
+    let query;
+    if (currentUrl.includes("google.com")) {
+        const regex = /(?<=q=).*?(?=&)/s;
+        if (currentUrl.match(regex) !== null) {
+            query = currentUrl.match(regex)[0].replace(/\+/g, ' ');
+            let behaviorItem = makeBehaviorItem("search", query);
+            chrome.runtime.sendMessage(behaviorItem, (response) => {
+                console.log("Message Response: ", response); //Response is undefined.
+            });
+        }
+    }
+}
+
+$(document).arrive('video', {existing: true}, function (v) {
+    videoObj = v;
+    console.log("arrive");
     videoObj.ontimeupdate = function () {
         // if there is a big gap between the current play time and the last play time,
         // the user has skipped/rewind the video
@@ -138,33 +163,19 @@ function isPlayingYoutubeAd(){
   return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
 
-// new url handler
+// Listening url changes for the current tab.
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
 
     currentUrl = message.url;
-    console.log(currentUrl);
-    let query;
-    if (url.includes("google.com")) {
-        const regex = /(?<=q=).*?(?=&)/s;
-        if (url.match(regex) !== null) {
-            query = url.match(regex)[0].replace(/\+/g, ' ');
-            let behaviorItem = makeBehaviorItem("search", query);
-            chrome.runtime.sendMessage(behaviorItem, (response) => {
-                console.log("Message Response: ", response); //Response is undefined.
-            });
-        }
-    }
+    console.log("currentUrl: "+ currentUrl);
+    removeMarkers();
+    loadMarkers();
+    saveQuery();
     //TODO: collect url history here.
 
 } );
 
-document.addEventListener('transitionend', function(e) {
-    if (e.target.id === 'progress'){
-        $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
-        console.log("yes");
-    }
-});
+
+
 document.addEventListener('copy', clipboardHandler);
 document.addEventListener('mouseup', highlightHandler);
-window.addEventListener("load", newUrlHandler);
-
