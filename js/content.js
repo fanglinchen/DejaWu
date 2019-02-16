@@ -104,72 +104,66 @@ function drawMarker(time_pair, duration) {
     $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').before($blueBar);
 }
 
-handleYTVideo();
 
-document.addEventListener('transitionend', function(e) {
-    if (e.target.id === 'progress'){
-        $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
-        console.log("yes");
-        handleYTVideo();
-    }
-});
+$(document).arrive('video', {existing: true}, function (v) {
+    console.log("test");
+    let videoObj = v;
+    let behaviorItem;
+    behaviorItem = makeBehaviorItem("video_play");
+    chrome.runtime.sendMessage(behaviorItem, (response) => {
+        for (let i = 0; i <= response.length - 1; i++) {
+            console.log("Message Response: ", response[i]); //Response is undefined.
+            drawMarker(response[i].split(":"), videoObj.duration);
+        }
+    });
 
-function handleYTVideo(){
-    if (document.location.href.includes("youtube.com")) {
-        $(document).arrive('video', {existing: true}, function (v) {
-            let videoObj = v;
-            let behaviorItem;
-            behaviorItem = makeBehaviorItem("video_play");
-            chrome.runtime.sendMessage(behaviorItem, (response) => {
-                for (let i = 0; i <= response.length - 1; i++) {
-                    console.log("Message Response: ", response[i]); //Response is undefined.
-                    drawMarker(response[i].split(":"), videoObj.duration);
-                }
-            });
-
-            videoObj.ontimeupdate = function () {
-                // if there is a big gap between the current play time and the last play time,
-                // the user has skipped/rewind the video
-                if (!isVideoAnAD()) {
-                    if (Math.abs(videoObj.currentTime - lastVideoTime) > 5) {
-                        console.log("snippet:" + lastVideoSnippetStartTime + " ---  " + lastVideoTime);
-                        behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime)
-                        lastVideoSnippetStartTime = videoObj.currentTime;
-                        chrome.runtime.sendMessage(behaviorItem, (response) => {
-                            console.log("Message Response: ", response); //Response is undefined.
-                        });
-                        //TODO: handle rewind event.
-                    }
-                    lastVideoTime = videoObj.currentTime;//
-                }
-            };
-
-            videoObj.onpause = function () {
-                console.log("paused");
-            };
-
-            videoObj.onended = function () {
-                console.log("ended");
-            };
-
-            window.onbeforeunload = function (e) {
-                console.log("closed");
-                behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime);
+    videoObj.ontimeupdate = function () {
+        // if there is a big gap between the current play time and the last play time,
+        // the user has skipped/rewind the video
+        if (!isPlayingYoutubeAd()) {
+            if (Math.abs(videoObj.currentTime - lastVideoTime) > 5) {
+                console.log("snippet:" + lastVideoSnippetStartTime + " ---  " + lastVideoTime);
+                behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime)
+                lastVideoSnippetStartTime = videoObj.currentTime;
                 chrome.runtime.sendMessage(behaviorItem, (response) => {
                     console.log("Message Response: ", response); //Response is undefined.
                 });
+                //TODO: handle rewind event.
             }
+            lastVideoTime = videoObj.currentTime;//
+        }
+    };
+
+    videoObj.onpause = function () {
+        console.log("paused");
+    };
+
+    videoObj.onended = function () {
+        console.log("ended");
+    };
+
+    window.onbeforeunload = function () {
+        console.log("closed");
+        behaviorItem = makeBehaviorItem("video", lastVideoSnippetStartTime + ":" + lastVideoTime);
+        chrome.runtime.sendMessage(behaviorItem, (response) => {
+            console.log("Message Response: ", response); //Response is undefined.
         });
     }
-}
+});
 
-function isVideoAnAD(){
+
+function isPlayingYoutubeAd(){
   return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
 
 
 
-
+document.addEventListener('transitionend', function(e) {
+    if (e.target.id === 'progress'){
+        $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
+        console.log("yes");
+    }
+});
 document.addEventListener('copy', clipboardHandler);
 document.addEventListener('mouseup', highlightHandler);
 window.addEventListener("load", newUrlHandler);

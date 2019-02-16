@@ -1,16 +1,16 @@
 (function() {
-    var allPageDisplay = null;
+    let allPageDisplay = null;
 
-    var add = function(type, content) {
-        var tab = document.getElementById("blacklist_tbl")
-        var row = tab.insertRow()
-        var stringCell = row.insertCell()
+    let add = function(type, content) {
+        let tab = document.getElementById("blacklist_tbl")
+        const row = tab.insertRow();
+        const stringCell = row.insertCell();
         stringCell.innerHTML = content ? content : ""
         stringCell.contentEditable = true
         stringCell.setAttribute("placeholder", "Add a site...");
 
-        var typeCell = row.insertCell()
-        var selectCell = document.createElement('select');
+        const typeCell = row.insertCell();
+        const selectCell = document.createElement('select');
         selectCell.innerHTML = '<option value="PAGE">Specific Page</option> \
                         <option value="SITE">Entire Website</option> \
                         <option value="REGEX">Regex</option>'
