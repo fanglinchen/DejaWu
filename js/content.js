@@ -1,23 +1,6 @@
 let lastVideoTime = 0;
 let lastVideoSnippetStartTime = 0;
 
-function newUrlHandler()
-{
-    let url = document.location.href;
-    let query;
-    if (url.includes("google.com")) {
-        const regex = /(?<=q=).*?(?=&)/s;
-        if (url.match(regex) !== null) {
-            query = url.match(regex)[0].replace(/\+/g, ' ');
-            let behaviorItem = makeBehaviorItem("search", query);
-            chrome.runtime.sendMessage(behaviorItem, (response) => {
-                console.log("Message Response: ", response); //Response is undefined.
-            });
-        }
-    }
-    //TODO: collect url history here.
-}
-
 function highlightHandler()
 {
     //Get selected text.
@@ -106,7 +89,6 @@ function drawMarker(time_pair, duration) {
 
 
 $(document).arrive('video', {existing: true}, function (v) {
-    console.log("test");
     let videoObj = v;
     let behaviorItem;
     behaviorItem = makeBehaviorItem("video_play");
@@ -156,7 +138,25 @@ function isPlayingYoutubeAd(){
   return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
 
+// new url handler
+chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
 
+    currentUrl = message.url;
+    console.log(currentUrl);
+    let query;
+    if (url.includes("google.com")) {
+        const regex = /(?<=q=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            query = url.match(regex)[0].replace(/\+/g, ' ');
+            let behaviorItem = makeBehaviorItem("search", query);
+            chrome.runtime.sendMessage(behaviorItem, (response) => {
+                console.log("Message Response: ", response); //Response is undefined.
+            });
+        }
+    }
+    //TODO: collect url history here.
+
+} );
 
 document.addEventListener('transitionend', function(e) {
     if (e.target.id === 'progress'){
@@ -167,3 +167,4 @@ document.addEventListener('transitionend', function(e) {
 document.addEventListener('copy', clipboardHandler);
 document.addEventListener('mouseup', highlightHandler);
 window.addEventListener("load", newUrlHandler);
+

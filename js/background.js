@@ -18,6 +18,16 @@ chrome.runtime.onInstalled.addListener(function (details) {
     });
 });
 
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+
+    if (changeInfo.status === "complete"){
+        console.log("new url detected:" + tab.url);
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs){
+            chrome.tabs.sendMessage(tabs[0].id, {url: tab.url}, function(response) {});
+        });
+    }
+});
+
 
 function acceptInput(text, disposition) {
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
