@@ -3,14 +3,14 @@ let lastVideoSnippetStartTime = 0;
 let videoObj;
 let currentUrl;
 
-function highlightHandler()
+function highlightHandler(e)
 {
     //Get selected text.
     let content = extractSelectedText();
     //If no content has been selected, ignore.
     if(content==="")
         return;
-    let bhvItm = makeBehaviorItem("select",content);
+    let bhvItm = makeBehaviorItem("select", content, e);
     chrome.runtime.sendMessage(bhvItm, (response) => {
         console.log("Message Response: ", response); //Response is undefined.
     });
@@ -23,7 +23,7 @@ function clipboardHandler(e)
     if(content==="")
         return;
     //Store the behavior duplicate in the content of the text selected.
-    let behaviorItem = makeBehaviorItem("copy", content);
+    let behaviorItem = makeBehaviorItem("copy", content, e);
     /*
         The superceding section concerns the detection of a html code element.
      */
@@ -35,6 +35,7 @@ function clipboardHandler(e)
     {
         //Add code indication to datatype.
         behaviorItem["datatype"] = "code";
+        console.log("Sent?");
     }
     //TODO: add case for image url
     //Send message to the background with modification requirements. The time recorded
@@ -51,6 +52,7 @@ function clipboardHandler(e)
 function extractSelectedText()
 {
     //Text selected.
+
     let sel = window.getSelection();
     if (sel)
     {
@@ -69,14 +71,22 @@ function extractSelectedText()
  * @param content The content associated with this event.
  * @returns {{data: *, time: Date, type: *, title: string, url: string}}
  */
-function makeBehaviorItem(event_type, content)
+function makeBehaviorItem(event_type, content, e)
 {
+    console.log("Entered!");
+    //Attempt to retrieve an id corresponding to the nearest parent node.
+    let cur = e?e.target:null;
+    //If an event is given.
+    if(cur)
+        while(!cur.hasAttribute("id") && (cur=cur.parentNode)!==document.body);
     return {
         "eventtype": event_type,
         "time": new Date(),
         "url": currentUrl,
         "title": document.title,
         "data": content,
+        //The id if present, null otherwise.
+        "section_id": cur&&(cur.getAttribute("id")||null)
     };
 }
 
