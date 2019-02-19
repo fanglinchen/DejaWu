@@ -131,10 +131,15 @@ function acceptInput(text, disposition) {
             let link = text;
             //If a code snippet should be redirected.
             for (let index in codeSnippets)
-                if (codeSnippets[index].data.trim() === text) {
-                    link = codeSnippets[index].url;
+            {
+                let snippet = codeSnippets[index];
+                if (snippet.data.trim() === text)
+                {
+                    link = snippet.url.concat(snippet.section_id?
+                        ("#"+snippet.section_id):"");
                     break;
                 }
+            }
             chrome.tabs.update({url: link});
             break;
         }
@@ -295,6 +300,7 @@ function omniboxHandler(text, suggest) {
             for (let i = 0; i < bhvItems.length; i++) {
                 if (bhvItems[i].datatype === "code") {
                     codeSnippets.push(bhvItems[i]);
+                    console.log("Behave! ", bhvItems[i]);
                 }
             }
             let suggestions = [];

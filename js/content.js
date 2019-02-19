@@ -9,15 +9,26 @@ const LONG_ENOUGH_MS = 8000;
 let videoDuration;
 
 function goToPastPageSection(){
-    chrome.runtime.sendMessage({
-        "eventtpye": "onload",
-        "url": currentUrl,
-    }, (response) => {
+    chrome.runtime.sendMessage({"url": currentUrl}, (response) => {
         console.log("scrolling to " + response);
         window.scrollTo(0, response);//auto scroll function
     });
 }
 
+function loadMarkers(){
+    chrome.runtime.sendMessage({"url": currentUrl}, (response) => {
+        videoDuration = response.duration;
+        let snippets = response.snippets;
+        for (let i = 0; i <= snippets.length - 1; i++) {
+            console.log("video snippet: ", snippets[i]);
+            let ratio = snippets[i].end_time / videoDuration - snippets[i].start_time / videoDuration;
+            let propValue = `scaleX(${ratio})`;
+            $blueProgressBar.css('left', ((snippets[i].start_time / videoDuration) * 100) + '%');
+            $blueProgressBar.css('transform', propValue);
+            $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueProgressBar);
+        }
+    });
+}
 
 /**
  * Save part of pages with long stay.
@@ -28,7 +39,8 @@ function scrollHandler(){
         || document.body.scrollTop + (document.documentElement && document.documentElement.scrollTop || 0);
 
     if (endTime - startTime > LONG_ENOUGH_MS) {
-        chrome.runtime.sendMessage({url: currentUrl, scroll: {position: currentPosition, duration: endTime-startTime, time: new Date()}}, function(response) {});
+        chrome.runtime.sendMessage({"url": currentUrl, "scroll": {"position": currentPosition,"duration": endTime-startTime, "time": new Date()}},
+            function(response) {});
     }
 
     startTime = endTime;
@@ -48,7 +60,8 @@ function saveHighlightedText()
     console.log("currentUrl:" + currentUrl);
     console.log("currentPosition:" + currentPosition);
     if(content!== ""){
-        chrome.runtime.sendMessage({url: currentUrl, highlight: {text: content, position: currentPosition, time: new Date()}}, function(response) {});
+        chrome.runtime.sendMessage({"url": currentUrl, "highlight": {"text": content, "position": currentPosition, "time": new Date()}},
+            function(response) {});
     }
 }
 
@@ -67,13 +80,12 @@ function saveCopiedText(e)
     //Check for text selection.
     let content = extractSelectedText();
     if(content!== ""){
-        chrome.runtime.sendMessage({url: currentUrl,
-                copy: {text: content,
-                    section_id: fetchSectionId(e),
-                    is_code : isCode(e),
-                    is_image_url: isImageUrl(content),
-                    time: new Date()},
-                is_code: true},
+        chrome.runtime.sendMessage({"url": currentUrl, "copy": {"text": content,
+                    "section_id": fetchSectionId(e),
+                    "is_code" : isCode(e),
+                    "is_image_url": isImageUrl(content),
+                    "time": new Date()},
+                "is_code": true},
             function(response) {});
     }
 
@@ -101,7 +113,9 @@ function extractSelectedText()
  *          snippet:
  *          start_time
  *          end_time
- *          time>
+ *          time
+ *  is_video
+ *  video_duration>
  */
 $(document).arrive('video',function (v) {
     videoObj = v;
@@ -116,10 +130,9 @@ $(document).arrive('video',function (v) {
                 console.log("snippet:" + lastVideoSnippetStartTime + " ---  " + lastVideoTime);
                 if (lastVideoTime - lastVideoSnippetStartTime > 3) {
                     chrome.runtime.sendMessage({
-                        url: currentUrl,
-                        snippet: {start_time: lastVideoSnippetStartTime, end_time: lastVideoTime, time: new Date()},
-                        is_video: true,
-                        video_duration: videoObj.duration
+                        "url": currentUrl,
+                        "snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
+                        "is_video": true, "video_duration": videoObj.duration
                     }, function (response) {});
                 }
                 lastVideoSnippetStartTime = videoObj.currentTime;
@@ -148,19 +161,7 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
         if (currentUrl === document.location.href) {
             if (currentUrl.includes("youtube.com")){
                 removeMarkers();
-                chrome.runtime.sendMessage({url: currentUrl}, (response) => {
-                        videoDuration = response.duration;
-                        let snippets = response.snippets;
-                        for (let i = 0; i <= snippets.length - 1; i++) {
-                            console.log("video snippet: ", snippets[i]);
-                            let ratio = snippets[i].end_time / videoDuration - snippets[i].start_time / videoDuration;
-                            let propValue = `scaleX(${ratio})`;
-                            $blueProgressBar.css('left', ((snippets[i].start_time / videoDuration) * 100) + '%');
-                            $blueProgressBar.css('transform', propValue);
-                            $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueProgressBar);
-                    }
-                });
-
+                loadMarkers();
             }
             else{
                 goToPastPageSection();
@@ -174,19 +175,19 @@ window.onbeforeunload = function () {
 
     if (currentUrl.includes("youtube.com")){
 
-        chrome.runtime.sendMessage({url: currentUrl,
-            snippet: {start_time: lastVideoSnippetStartTime, end_time: lastVideoTime, time: new Date()},
-            is_video: true,
-            video_duration: videoObj.duration}, function(response) {});
+        chrome.runtime.sendMessage({"url": currentUrl,
+            "snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
+            "is_video": true,
+            "video_duration": videoObj.duration}, function(response) {});
     }
     else{
         // only considers scrolling positions when the web page is not video
         endTime = new Date().getTime();
         if (endTime - startTime > LONG_ENOUGH_MS) {
-            chrome.runtime.sendMessage({url: currentUrl,
-                scroll: {position: currentPosition,
-                        duration: endTime-startTime,
-                        time: new Date()}}, function(response) {});
+            chrome.runtime.sendMessage({"url": currentUrl,
+                "scroll": {"position": currentPosition,
+                    "duration": endTime-startTime,
+                    "time": new Date()}}, function(response) {});
         }
     }
 };
