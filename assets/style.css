@@ -25,11 +25,8 @@ a.delete:hover {
     margin-bottom: 30px;
 }
 
-
-/* TODO: remove unused styles below The Modal (background) */
-
-.blueProgress{
+.d-video-progress{
     transform: scaleX(0);
-    background-color: blue !important;
+    background-color: #00FFFF !important;
     z-index: 35!important;
 }
