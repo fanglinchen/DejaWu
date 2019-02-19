@@ -85,7 +85,7 @@ function saveCopiedText(e)
                     "is_code" : isCode(e),
                     "is_image_url": isImageUrl(content),
                     "time": new Date()},
-                "is_code": true},
+                "is_code": isCode(e)},
             function(response) {});
     }
 
