@@ -1,4 +1,5 @@
 let storage = chrome.storage.local;
+let behaviorCodes = ["copy", "highlight"];
 let scrollArray=[];
 let longestTime = 0;
 let rightPosition =0; //get the most probable position in array.
@@ -115,57 +116,43 @@ function saveUrlsToTab(urls, tabId){
 }
 
 /**
- *
- * @param text
- * @param disposition
+ * Update, or add, a behavior item on the given web page. Each url corresponds with
+ * a map that contains different behavior codes as keys and an array that contains
+ * all behavioral information of this type of behavior. For certain information, as
+ * title, which does not really account for a behavior that can occur more than once,
+ * their corresponding value may be a single value.
+ * @param url The url associated with this information.
+ * @param bhvCode The type of behavior, as delineated in the behavior code container.
+ * @param bhv The actual bundle of behavioral information to be stored.
+ * @param title The title of the page.
  */
-function acceptInput(text, disposition) {
-    // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
-    //If previously extracted code segments match the current text, direct to them.
-    if (!isValidUrl(text) && !codeSnippets) {
-        return;
-    }
-    switch (disposition) {
-        case "currentTab": {
-            //Default link using text.
-            let link = text;
-            //If a code snippet should be redirected.
-            for (let index in codeSnippets)
-            {
-                let snippet = codeSnippets[index];
-                if (snippet.data.trim() === text)
-                {
-                    link = snippet.url.concat(snippet.section_id?
-                        ("#"+snippet.section_id):"");
-                    break;
-                }
-            }
-            chrome.tabs.update({url: link});
-            break;
-        }
-        case "newForegroundTab": {
-            chrome.tabs.create({url: text});
-            break;
-        }
-        case "newBackgroundTab": {
-            chrome.tabs.create({url: text, active: false});
-            break;
-        }
-    }
-}
-
-/**
- * update a locally stored item with the latest list of values
- * @param key: the key to the item
- * @param array
- */
-function update(key, array)
+function update(url, bhvCode, bhv, title)
 {
-    console.log("Updated? ", array);
-    //then call the set to update with modified value
-    storage.set({[key]: array});
+    //If no previous storage of behavior exists under this url, result would be {}.
+    storage.get(url, function (result)
+    {
+        //Previously associated behaviors with this url.
+        let previousBhvs;
+        //If this url does not have stored behaviors yet, provide for a container.
+        //Presently we assume that an url has a corresponding title.
+        if(!result[url])
+            previousBhvs = {title: title};
+        //Else retrieve the previously stored information.
+        else
+            previousBhvs = result[url];
+        //Now descend into the level for this behavior code.
+        //If this url does not already have a behavior of this type.
+        if(!result[url] || !previousBhvs[bhvCode])
+            previousBhvs[bhvCode] = [];
+        //Append this new behavior.
+        previousBhvs[bhvCode].push(bhv);
+        //The behavior items that contains the url as key and the behaviors as value.
+        let bhvItms = {};
+        bhvItms[url] = previousBhvs;
+        //Send to be storage to be stored.
+        storage.set(bhvItms);
+    });
 }
-
 
 /**
  * Handling messages from content script.
@@ -174,24 +161,16 @@ function update(key, array)
  * @param sendResponse
  * @returns {boolean}
  */
-
-function handleMessage(request, sender, sendResponse) {
-    let behaviorCodes = ["copy", "select", "search"];
-    if (behaviorCodes.includes(request.eventtype)) {
-        storage.get(
-            ['behaviorItems'],// get the data whose key =behaviorItems
-            function (result) {
-                let bhvItems = result.behaviorItems;
-                if (!Array.isArray(bhvItems)) {
-                    update('behaviorItems',[]);
-                } else {
-                    console.log("request: ", request);
-                    bhvItems.push(request);
-                    update('behaviorItems',bhvItems);
-                    console.log(bhvItems);
-                }
-            });
+function handleMessage(request, sender, sendResponse)
+{
+    //The given type of behavior of the message.
+    let etype = request.event_type;
+    if (behaviorCodes.includes(etype))
+    {
+        //Record this behavior.
+        update(request.url, etype, request[etype], request.title);
     }
+    //Modified up to here. All below untouched.
     if (request.eventtype === 'video') {
         storage.get(
             ["snippets"],
@@ -277,49 +256,107 @@ function handleMessage(request, sender, sendResponse) {
     return true;
 }
 
+
 //Code segments extracted as suggestions. By storing them in this array,
 //when one is potentially adopted by the user, the choices need only be
 //checked from this list.
 let codeSnippets;
 
 /**
- * Handling text inputs from the omnibox and generate suggestions 
- * @param text
- * @param suggest
+ * Handling text inputs from the omnibox and generate suggestions
+ * @param text The current text typed by the user, autofill not counter.
+ * @param suggest A function for populating suggestions.
  */
 
-function omniboxHandler(text, suggest) {
+function omniboxHandler(text, suggest)
+{
     //Select code segments.
-    storage.get(
-        ['behaviorItems'],
-        function (result) {
-            //All processing must be included in this callback.
-            let bhvItems = result.behaviorItems;
-            //Holder for behavior items that contained copied code segments.
+    storage.get(null,
+        //All the behaviors organized by their urls as keys.
+        function (bhvItems) {
+        //Code copied items and the titles of the site they are under.
             codeSnippets = [];
-            for (let i = 0; i < bhvItems.length; i++) {
-                if (bhvItems[i].datatype === "code") {
-                    codeSnippets.push(bhvItems[i]);
-                    console.log("Behave! ", bhvItems[i]);
-                }
+            for(let bhvItmKey in bhvItems)
+            {
+                //The bundled information to this url.
+                let bhvItm = bhvItems[bhvItmKey];
+                //The title of this page.
+                let title = bhvItm.title;
+                //The previously copied information from this page.
+                let copy = bhvItm.copy;
+                //If no copied content is contained in this site, pass.
+                if(!copy)
+                    continue;
+                //Loop through the possible different code segments contained
+                //in this site.
+                for(let j = 0; j < copy.length; j++)
+                    if(copy[j].is_code)
+                        codeSnippets.push({url: bhvItmKey, title: title,
+                                            content: copy[j]});
             }
             let suggestions = [];
+            //A holder for segments of code retrieved.
+            let code;
             //Push suggestions.
-            for (let i = 0; i < codeSnippets.length; i++) {
+            for (let i = 0; i < codeSnippets.length; i++)
+            {
+                code = codeSnippets[i].content.text;
                 //If the current sequence typed is included in a code segment.
-                if (codeSnippets[i].data.indexOf(text) !== -1)
+                if (code.indexOf(text) !== -1)
                 //Content is that filled when selected, description that appears.
                     suggestions.push({
-                        content: codeSnippets[i].data,
-                        description: codeSnippets[i].data
+                        content: code,
+                        description: code
                     });
                 //Or if the text matches the title above that recorded code.
                 else if (codeSnippets[i].title.indexOf(text) !== -1)
                     suggestions.push({
-                        content: codeSnippets[i].data,
-                        description: codeSnippets[i].data
+                        content: code,
+                        description: code
                     });
             }
             suggest(suggestions);
         });
+}
+
+/**
+ *
+ * @param text
+ * @param disposition
+ */
+function acceptInput(text, disposition) {
+    // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
+    //If previously extracted code segments match the current text, direct to them.
+    if (!isValidUrl(text) && !codeSnippets) {
+        return;
+    }
+    switch (disposition) {
+        case "currentTab": {
+            //Default link using text.
+            let link = text;
+            //If a code snippet should be redirected.
+            for(let index in codeSnippets)
+            {
+                //Snippet of title-bundled copied behavior.
+                let snippet = codeSnippets[index];
+                if (snippet.content.text.trim() === text)
+                {
+                    link = snippet.url;
+                    link = snippet.url.concat(snippet.content.section_id?
+                        ("#"+snippet.content.section_id):"");
+                    break;
+                }
+            }
+            chrome.tabs.update({url: link});
+            break;
+        }
+        case "newForegroundTab": {
+            chrome.tabs.create({url: text});
+            break;
+        }
+        case "newBackgroundTab": {
+            chrome.tabs.create({url: text, active: false});
+            break;
+        }
+    }
 }
