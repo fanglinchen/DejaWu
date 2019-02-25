@@ -16,15 +16,14 @@
                 "js/lib/readability.js",
                 "js/relevanttext.js",
                 "js/HTMLelements.js",
-                "js/image.js",
                 "js/video.js",
+                "js/url.js",
                 "js/code.js",
                 "js/content.js",
                 "js/lib/bootstrap.min.js",
                 "js/lib/jquery-ui.js"],
             "css": [
-                "assets/bootstrap.min.css",
-                "assets/style.css"
+                "assets/bootstrap.min.css"
             ],
             "run_at": "document_end",
             "all_frames": false
@@ -52,6 +51,11 @@
     "omnibox": { "keyword" : "d" },
     "options_page": "assets/preferences.html",
     "background": {
-        "scripts": ["js/blacklist2.js", "js/lib/chrono.min.js", "js/textprocessing.js", "js/queryparser.js", "js/background.js"]
+        "scripts": ["js/url.js",
+                    "js/blacklist2.js",
+                    "js/lib/chrono.min.js",
+                    "js/textprocessing.js",
+                    "js/queryparser.js",
+                    "js/background.js"]
     }
 }

@@ -54,13 +54,21 @@ function scrollHandler(){
  *          position
  *          time>
  */
-function saveHighlightedText()
+function saveHighlightedText(e)
 {
     let content = extractSelectedText();
     console.log("currentUrl:" + currentUrl);
     console.log("currentPosition:" + currentPosition);
     if(content!== ""){
-        chrome.runtime.sendMessage({"url": currentUrl, "highlight": {"text": content, "position": currentPosition, "time": new Date()}},
+        console.log("Sending!");
+        chrome.runtime.sendMessage({"url": currentUrl,
+                "title": document.title,
+                "event_type": "highlight",
+                "highlight":
+                    {"text": content,
+                        "section_id": fetchSectionId(e),
+                        "position": currentPosition,
+                        "time": new Date()}},
             function(response) {});
     }
 }
@@ -79,13 +87,18 @@ function saveCopiedText(e)
 {
     //Check for text selection.
     let content = extractSelectedText();
+    //Whether this segment of text contains code.
+    let iscode = false;
     if(content!== ""){
-        chrome.runtime.sendMessage({"url": currentUrl, "copy": {"text": content,
+        chrome.runtime.sendMessage({"url": currentUrl,
+                "title": document.title,
+                "event_type": "copy",
+                "copy": {"text": content,
                     "section_id": fetchSectionId(e),
-                    "is_code" : isCode(e),
-                    "is_image_url": isImageUrl(content),
+                    "is_code" : iscode = isCode(e),
+                    //"is_image_url": isImageUrl(content),
                     "time": new Date()},
-                "is_code": isCode(e)},
+                "is_code": iscode},
             function(response) {});
     }
 
@@ -95,8 +108,6 @@ function saveCopiedText(e)
  * Extract selected text. Returns "" if no text selected.
  * @returns {string}
  */
-
-
 function extractSelectedText()
 {
     let sel = window.getSelection();
@@ -105,7 +116,7 @@ function extractSelectedText()
     }
 }
 
-//
+
 /**
  * Listen snippet data once a video element is created
  * Data format:
@@ -194,4 +205,4 @@ window.onbeforeunload = function () {
 
 document.addEventListener('copy', saveCopiedText);
 document.addEventListener('mouseup', saveHighlightedText);
-window.addEventListener("scroll", scrollHandler);
+window.addEventListener('scroll', scrollHandler);
