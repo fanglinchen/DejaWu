@@ -1,9 +1,7 @@
 let storage = chrome.storage.local;
-let behaviorCodes = ["copy", "highlight"];
-let scrollArray=[];
-let longestTime = 0;
-let rightPosition =0; //get the most probable position in array.
-let videoDuration;
+// related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
+let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
+let pageLoadingBehaviorTypes = ["stay", "video_snippet"];
 
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
@@ -37,15 +35,18 @@ chrome.tabs.onCreated.addListener(function(tab){
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.status === "complete" && isValidUrl(tab.url)){
         console.log("new url detected:" + tab.url +" for tab " + tabId);
+        let query = null;
 
+        // look up url history for the current tab.
         storage.get({[tabId.toString()]:[]}, function (item) {
-            let array = item[tabId.toString()];
-            // Fetch query
-            if (array.length !== 0){
-                let i= array.length -1;
-                let query = null;
+            let pastUrls = item[tabId.toString()];
+
+            // Fetch query from the url history of the current tab
+            if (pastUrls.length !== 0){
+                let i= pastUrls.length -1;
+
                 while(i>=0){
-                    query = extractQueryFromUrl(array[i]);
+                    query = extractQueryFromUrl(pastUrls[i]);
                     if (query !== null){
                         break;
                     }
@@ -53,29 +54,41 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 }
             }
 
-            // Check url history
+            /*Update the current url to the url's behavior item map, if there isn't one yet, create it at once.*/
             storage.get({[tab.url]:{}}, function (item) {
                 if(item === {}){
+                    console.log("item{}", item);
                     saveUrlInfo(tab.url, {visitTime: [new Date()], query: query})
                 }
                 else{
-                    let visitTimes = info.visitTime;
+                    console.log("item n{}", item);
+                    let visitTimes = item.visitTime;
                     visitTimes.push(new Date());
                     saveUrlInfo(tab.url, {visitTime:visitTimes, query: query})
                 }
             });
 
             chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
-            array.push(tab.url);
+            pastUrls.push(tab.url);
 
-            saveUrlsToTab(array, tabId);
+            saveUrlsToTab(pastUrls, tabId);
         });
     }
 });
 
-
-
-
+/**
+ * Extract keys from an object, non-recursive
+ * @param obj
+ * @returns {Array}
+ */
+function getKeys(obj){
+    let keys = [];
+    for (let key in obj){
+        keys.push(key);
+    }
+    return keys;
+    // recursive - Object.keys(obj).find(key => obj[key] === value)
+}
 
 /**
  * Extract query given a url
@@ -122,36 +135,40 @@ function saveUrlsToTab(urls, tabId){
  * title, which does not really account for a behavior that can occur more than once,
  * their corresponding value may be a single value.
  * @param url The url associated with this information.
- * @param bhvCode The type of behavior, as delineated in the behavior code container.
- * @param bhv The actual bundle of behavioral information to be stored.
+ * @param behaviorType The type of behavior, as delineated in the behavior code container.
+ * @param behavior The actual bundle of behavioral information to be stored.
  * @param title The title of the page.
  */
-function update(url, bhvCode, bhv, title)
+function update(url, behaviorType, behavior, title)
 {
     //If no previous storage of behavior exists under this url, result would be {}.
     storage.get(url, function (result)
     {
-        //Previously associated behaviors with this url.
-        let previousBhvs;
-        //If this url does not have stored behaviors yet, provide for a container.
-        //Presently we assume that an url has a corresponding title.
+        // If there are no existing behaviors stored yet to this url, initialize it using the title.
+        let existingBehaviors;
         if(!result[url])
-            previousBhvs = {title: title};
-        //Else retrieve the previously stored information.
+            existingBehaviors = {title: title};
         else
-            previousBhvs = result[url];
-        //Now descend into the level for this behavior code.
-        //If this url does not already have a behavior of this type.
-        if(!result[url] || !previousBhvs[bhvCode])
-            previousBhvs[bhvCode] = [];
-        //Append this new behavior.
-        previousBhvs[bhvCode].push(bhv);
-        //The behavior items that contains the url as key and the behaviors as value.
-        let bhvItms = {};
-        bhvItms[url] = previousBhvs;
-        //Send to be storage to be stored.
-        storage.set(bhvItms);
+            existingBehaviors = result[url];
+
+        // Append the new behavior to the end of the list of this type of behavior
+        if(!result[url] || !existingBehaviors[behaviorType])
+            existingBehaviors[behaviorType] = [];
+        existingBehaviors[behaviorType].push(behavior);
+
+        let toSave = {};
+        toSave[url] = existingBehaviors;
+        storage.set(toSave);
     });
+}
+
+/**
+ * TODO: @zhilin add a reasonable algorithm to tell the most valuable stay here
+ * @param array
+ * @returns {*}
+ */
+function selectMostValuableStay(array){
+    return array[0];
 }
 
 /**
@@ -163,96 +180,41 @@ function update(url, bhvCode, bhv, title)
  */
 function handleMessage(request, sender, sendResponse)
 {
-    //The given type of behavior of the message.
-    let etype = request.event_type;
-    if (behaviorCodes.includes(etype))
-    {
-        //Record this behavior.
-        update(request.url, etype, request[etype], request.title);
-    }
-    //Modified up to here. All below untouched.
-    if (request.eventtype === 'video') {
-        storage.get(
-            ["snippets"],
-            function (result) {
-                console.log(result);
-                let videoSnippets = result.snippets;
-                if (!Array.isArray(videoSnippets)) {
-                    update("snippets", []);
-                } else {
-                    videoSnippets.push(request);
-                    update("snippets",videoSnippets);
-                }
-            }
-        )
-    }
-    if (request.eventtype === "video_play") {
-        storage.get(
-            ["snippets"],
-            function (result) {
-                console.log(result);
-                let videoSnippets = result.snippets;
-                if (!Array.isArray(videoSnippets)) {
-                    update("snippets",[]);
-                    sendResponse(null);
-                } else {
-                    console.log(request);
-                    let videoSnippetsArray = [];//define an Array to send
-                    for (let i = 0; i < videoSnippets.length; i++) {
-                        // TODO: handle same video with different parameters
-                        // TODO: handle visualization of multiple snippets
-                        if (videoSnippets[i].data.split(":")[0] !== videoSnippets[i].data.split(":")[1]) {
-                            if (videoSnippets[i].url === request.url) {
-                                videoSnippetsArray.push(videoSnippets[i].data);
-                            }
+    let keys = getKeys(request);
+    // Case 1: saved content retrieval based on a single URL
+    if (keys.length === 1){
+        let url = request.url;
+        if (isValidUrl(url)){
+            storage.get(url, function (result)
+            {
+
+                let existingBehaviors = result[url];
+                if(existingBehaviors){
+                    let toSend = {};
+                    for (let key in pageLoadingBehaviorTypes){
+                        if (key in getKeys(existingBehaviors)){
+                            if (key === "video_snippet")
+                                toSend[key] = existingBehaviors[key];
+                            else if (key === "stay")
+                                toSend[key] = selectMostValuableStay(existingBehaviors[key]);
                         }
                     }
-                    sendResponse(videoSnippetsArray);
+                    sendResponse(toSend);
                 }
-            }
-        )
+
+            });
+        }
+    }
+    // Case 2: update
+    else{
+        let etype = request.event_type;
+        if (behaviorTypes.includes(etype))
+        {
+            //Record this behavior.
+            update(request.url, etype, request[etype], request.title);
+        }
     }
 
-    if (request.eventtpye === "scroll") {
-        chrome.storage.local.get(
-            ['scrollinfo'],
-            function (result) {
-                if (!Array.isArray(result.scrollinfo)) {
-                    update("scrollinfo",[]);
-                } else {
-                    console.log(request);
-                    result.scrollinfo.push(request);
-                    update("scrollinfo",result.scrollinfo);
-                    console.log(result.scrollinfo);
-                }
-            });
-        sendResponse("stored");
-    }
-    if (request.eventtpye === "onload") {
-        chrome.storage.local.get(
-            ['scrollinfo'],
-            function (result) {
-                scrollArray = result.scrollinfo;
-                if (!Array.isArray(scrollArray)) {
-                    update('scrollinfo',[]);
-                    sendResponse(null);
-                } else {
-                    console.log(scrollArray);
-
-                    for (let i = 0; i <= scrollArray.length - 1; i++) {
-                        if (scrollArray[i].url === request.url) {
-                            if (scrollArray[i].duration > longestTime) {
-                                longestTime = scrollArray[i].duration;
-                                rightPosition = scrollArray[i].position;
-                            }
-                        }
-                    }
-                    console.log(rightPosition);
-                    console.log(longestTime);
-                    sendResponse(rightPosition);
-                }
-            });
-    }
     return true;
 }
 
@@ -334,6 +296,7 @@ function acceptInput(text, disposition) {
         case "currentTab": {
             //Default link using text.
             let link = text;
+            // TODO: @derek rename variables because this is not specific to code
             //If a code snippet should be redirected.
             for(let index in codeSnippets)
             {

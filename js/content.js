@@ -39,7 +39,7 @@ function scrollHandler(){
         || document.body.scrollTop + (document.documentElement && document.documentElement.scrollTop || 0);
 
     if (endTime - startTime > LONG_ENOUGH_MS) {
-        chrome.runtime.sendMessage({"url": currentUrl, "scroll": {"position": currentPosition,"duration": endTime-startTime, "time": new Date()}},
+        chrome.runtime.sendMessage({"url": currentUrl, "stay": {"position": currentPosition,"duration": endTime-startTime, "time": new Date()}},
             function(response) {});
     }
 
@@ -51,6 +51,7 @@ function scrollHandler(){
  * <Url
  *          highlight:
  *          text
+ *          section_id
  *          position
  *          time>
  */
@@ -85,20 +86,22 @@ function saveHighlightedText(e)
  */
 function saveCopiedText(e)
 {
-    //Check for text selection.
+    //TODO: @Derek - remove event type and title in behavior messages in the hackathon. In the background, the message handler should scan the
+    // key of the map first, and just decides on its own whether to append item to list or not. We don't need to save title because it is already saved
+    // in the background in the tab listener.
+
     let content = extractSelectedText();
-    //Whether this segment of text contains code.
-    let iscode = false;
+    let contains_code = false;
     if(content!== ""){
         chrome.runtime.sendMessage({"url": currentUrl,
                 "title": document.title,
                 "event_type": "copy",
                 "copy": {"text": content,
                     "section_id": fetchSectionId(e),
-                    "is_code" : iscode = isCode(e),
+                    "is_code" : contains_code = isCode(e),
                     //"is_image_url": isImageUrl(content),
                     "time": new Date()},
-                "is_code": iscode},
+                "contains_code": contains_code},
             function(response) {});
     }
 
@@ -125,7 +128,7 @@ function extractSelectedText()
  *          start_time
  *          end_time
  *          time
- *  is_video
+ *  contains_video
  *  video_duration>
  */
 $(document).arrive('video',function (v) {
@@ -142,8 +145,9 @@ $(document).arrive('video',function (v) {
                 if (lastVideoTime - lastVideoSnippetStartTime > 3) {
                     chrome.runtime.sendMessage({
                         "url": currentUrl,
-                        "snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
-                        "is_video": true, "video_duration": videoObj.duration
+                        "video_snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
+                        "contains_video": true,
+                        "video_duration": videoObj.duration
                     }, function (response) {});
                 }
                 lastVideoSnippetStartTime = videoObj.currentTime;
@@ -187,8 +191,8 @@ window.onbeforeunload = function () {
     if (currentUrl.includes("youtube.com")){
 
         chrome.runtime.sendMessage({"url": currentUrl,
-            "snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
-            "is_video": true,
+            "video_snippet": {"start_time": lastVideoSnippetStartTime, "end_time": lastVideoTime, "time": new Date()},
+            "contains_video": true,
             "video_duration": videoObj.duration}, function(response) {});
     }
     else{
@@ -196,7 +200,7 @@ window.onbeforeunload = function () {
         endTime = new Date().getTime();
         if (endTime - startTime > LONG_ENOUGH_MS) {
             chrome.runtime.sendMessage({"url": currentUrl,
-                "scroll": {"position": currentPosition,
+                "stay": {"position": currentPosition,
                     "duration": endTime-startTime,
                     "time": new Date()}}, function(response) {});
         }
