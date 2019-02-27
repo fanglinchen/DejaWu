@@ -69,10 +69,8 @@ function mouseUpHandler(e) {
 }
 //quit screen shot
 function keyDown(e) {
-	var keyCode = e.keyCode;
-
-	// Hit: ESC
-	if ( keyCode == '27') {
+    // Hit: ESC
+	if ( e.keyCode === '27') {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -311,7 +309,6 @@ function endScreenshot(coords, quit) {
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     console.log("get message");//test
     currentUrl=message.url;
-    //TODO: @Zhilin add a message field "type", for new url update: type = new_url
     if (message.type === "new_url"){
         let videoResponse=message.video;
         console.log(videoResponse);//TEST

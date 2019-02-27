@@ -220,11 +220,11 @@ function update(url, behaviorType, behavior, title)
 }
 
 /**
- * TODO: @zhilin add a reasonable algorithm to tell the most valuable stay here
+ * Selecting a most probable stay users would like to revisit
+ * TODO: @ZZL - Consider stay frequency
  * @param array
  * @returns {*}
  */
-//Modified by ZZL
 function selectMostValuableStay(array){
     let stayPosition;
     let longestTime=0;
