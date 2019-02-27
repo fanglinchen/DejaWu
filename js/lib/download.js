@@ -160,3 +160,11 @@
 		return true;
 	}; /* end download() */
 }));
+
+/**
+ *
+ * @param dataURI
+ */
+function saveFile(dataURI, filename) {
+	download(dataURI, filename, "image/plain");
+}

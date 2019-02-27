@@ -10,65 +10,6 @@ let videoDuration;
 let ghostElement, startPos, startY;
 
 
-function mouseDown(e) {
-    e.preventDefault();
-
-    startPos = {x: e.pageX, y: e.pageY};
-    startY = e.y;
-
-    ghostElement = document.createElement('div');
-    ghostElement.style.background = 'blue';
-    ghostElement.style.opacity = '0.1';
-    ghostElement.style.position = 'absolute';
-    ghostElement.style.left = e.pageX + 'px';
-    ghostElement.style.top = e.pageY + 'px';
-    ghostElement.style.width = "0px";
-    ghostElement.style.height = "0px";
-    ghostElement.style.zIndex = "1000000";
-    document.body.appendChild(ghostElement);
-
-    document.addEventListener('mousemove', mouseMove, false);
-    document.addEventListener('mouseup', mouseUp, false);
-
-    return false;
-}
-
-function mouseMove(e) {
-    e.preventDefault();
-
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
-
-    ghostElement.style.width = diff.x + 'px';
-    ghostElement.style.height = diff.y + 'px';
-
-    return false;
-}
-
-function mouseUp(e) {
-    e.preventDefault();
-
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
-
-    document.removeEventListener('mousemove', mouseMove, false);
-    document.removeEventListener('mouseup', mouseUp, false);
-
-    ghostElement.parentNode.removeChild(ghostElement);
-
-    setTimeout(function() {
-        const coords = {
-            w: diff.x,
-            h: diff.y,
-            x: startPos.x,
-            y: startY
-        };
-        endScreenshot(coords);
-    }, 50);
-
-    return false;
-}
-
 function goToPastPageSection(){
     chrome.runtime.sendMessage({"url": currentUrl}, (response) => {
         console.log("scrolling to " + response);
@@ -89,6 +30,75 @@ function loadMarkers(){
             $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueProgressBar);
         }
     });
+}
+
+function mouseUpHandler(e) {
+    e.preventDefault();
+
+    const nowPos = {x: e.pageX, y: e.pageY};
+    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+
+    document.removeEventListener('mousemove', mouseMoveHandler, false);
+    document.removeEventListener('mouseup', mouseUpHandler, false);
+
+    ghostElement.parentNode.removeChild(ghostElement);
+
+    setTimeout(function() {
+        const coords = {
+            w: diff.x,
+            h: diff.y,
+            x: startPos.x,
+            y: startY
+        };
+        endScreenshot(coords);
+    }, 50);
+
+    return false;
+}
+
+/**
+ *
+ * @param e
+ * @returns {boolean}
+ */
+function mouseMoveHandler(e) {
+    e.preventDefault();
+
+    const nowPos = {x: e.pageX, y: e.pageY};
+    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+
+    ghostElement.style.width = diff.x + 'px';
+    ghostElement.style.height = diff.y + 'px';
+
+    return false;
+}
+
+/**
+ *
+ * @param e
+ * @returns {boolean}
+ */
+function mouseDownHandler(e) {
+    e.preventDefault();
+
+    startPos = {x: e.pageX, y: e.pageY};
+    startY = e.y;
+
+    ghostElement = document.createElement('div');
+    ghostElement.style.background = 'blue';
+    ghostElement.style.opacity = '0.1';
+    ghostElement.style.position = 'absolute';
+    ghostElement.style.left = e.pageX + 'px';
+    ghostElement.style.top = e.pageY + 'px';
+    ghostElement.style.width = "0px";
+    ghostElement.style.height = "0px";
+    ghostElement.style.zIndex = "1000000";
+    document.body.appendChild(ghostElement);
+
+    document.addEventListener('mousemove', mouseMoveHandler, false);
+    document.addEventListener('mouseup', mouseUpHandler, false);
+
+    return false;
 }
 
 /**
@@ -231,15 +241,16 @@ $(document).arrive('video',function (v) {
 function startScreenshot() { console.log('start screenshot');
     //change cursor
     document.body.style.cursor = 'crosshair';
-    document.addEventListener('mousedown', mouseDown, false);
+    document.addEventListener('mousedown', mouseDownHandler, false);
 }
 
 function endScreenshot(coords) {
-    document.removeEventListener('mousedown', mouseDown, false);
+    document.removeEventListener('mousedown', mouseDownHandler, false);
 
     document.body.style.cursor = 'default';
 
     console.log('sending message with screenshoot');
+    // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
     chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
 }
 
@@ -268,6 +279,7 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     }
 
 });
+
 
 // When the web page is about to be unloaded.
 window.onbeforeunload = function () {

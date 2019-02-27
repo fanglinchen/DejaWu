@@ -2,10 +2,6 @@ let storage = chrome.storage.local;
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
 let pageLoadingBehaviorTypes = ["stay", "video_snippet"];
-//used specifically for Retina screen to get the image's correct size
-
-
-
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -16,6 +12,15 @@ chrome.runtime.onInstalled.addListener(function (details) {
             console.error(error);
         }
     });
+});
+
+// Handling shortkey commands
+chrome.commands.onCommand.addListener( function(command) {
+    if(command === "screenshot_command"){
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {type: "start_screenshots" });
+        });
+    }
 });
 
 // When a tab just got created.
@@ -153,13 +158,7 @@ function cropData(str, coords, callback) {
     img.src = str;
 }
 
-/**
- *
- * @param dataURI
- */
-function saveFile(dataURI) {
-    download(dataURI, "Screenshot " + new Date().toDateString() + ".png", "image/plain");
-}
+
 
 /**
  *
@@ -169,7 +168,7 @@ function capture(coords) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
         cropData(data, coords, function(data) {
             console.log("Done");
-            saveFile(data.dataUri);
+            saveFile(data.dataUri, "Screenshot " + new Date().toDateString() + ".png");
         });
     });
 }
@@ -218,14 +217,7 @@ function selectMostValuableStay(array){
     return array[0];
 }
 
-// Handling shortkey commands
-chrome.commands.onCommand.addListener( function(command) {
-    if(command === "screenshot_command"){
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {type: "start_screenshots" });
-        });
-    }
-});
+
 
 /**
  * Handling messages from content script.
