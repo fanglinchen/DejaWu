@@ -80,14 +80,14 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             saveUrlsToTab(pastUrls, tabId);
         });
         storage.get(tab.url, function (result) {
-            let videoSnippets=[];
+            let videoSnippet={};
             let rightPosition=0;
             let existingBehaviors = result[tab.url];
             if (existingBehaviors) {
                 if(existingBehaviors["video_snippet"]){
-                    videoSnippets = getVideoText( existingBehaviors["video_snippet"]);
+                    videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
+                    console.log(videoSnippet);
                 }
-                console.log(videoSnippets);
                 if(existingBehaviors["stay"]){
                     rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
                 }
@@ -95,7 +95,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 chrome.tabs.sendMessage(tabId, {
                     url: tab.url,
                     "type":"new_url",
-                    "video": videoSnippets,
+                    "video": videoSnippet,
                     "position": rightPosition
                 }, function (response) {console.log(response);});
         });
@@ -238,12 +238,17 @@ function selectMostValuableStay(array){
     return stayPosition;
 }
 
-function getVideoText(array) {
-    let videoTextSnippet=[];
+function getMostValuableVideo(array) {
+    let longestTime=0;
+    let valuableSnippet;
     for (let i = 0; i <= array.length - 1; i++) {
-        videoTextSnippet.push(array[i].text);
+        let snippet=array[i].end_time-array[i].start_time;
+        if(snippet>longestTime){
+            valuableSnippet=array[i];
+            longestTime=snippet;
+        }
     }
-    return videoTextSnippet;
+    return valuableSnippet;
 }
 
 
