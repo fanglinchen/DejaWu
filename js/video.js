@@ -6,3 +6,4 @@ function removeMarkers(){
     console.log("remove markers...");
     $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
 }
+

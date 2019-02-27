@@ -1,7 +1,6 @@
 let storage = chrome.storage.local;
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
-let pageLoadingBehaviorTypes = ["stay", "video_snippet"];
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -76,10 +75,29 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 }
             });
 
-            chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
+            //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
             pastUrls.push(tab.url);
-
             saveUrlsToTab(pastUrls, tabId);
+        });
+        storage.get(tab.url, function (result) {
+            let videoSnippets=[];
+            let rightPosition=0;
+            let existingBehaviors = result[tab.url];
+            if (existingBehaviors) {
+                if(existingBehaviors["video_snippet"]){
+                    videoSnippets = getVideoText( existingBehaviors["video_snippet"]);
+                }
+                console.log(videoSnippets);
+                if(existingBehaviors["stay"]){
+                    rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
+                }
+            }
+                chrome.tabs.sendMessage(tabId, {
+                    url: tab.url,
+                    "type":"new_url",
+                    "video": videoSnippets,
+                    "position": rightPosition
+                }, function (response) {console.log(response);});
         });
     }
 });
@@ -89,14 +107,6 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
  * @param obj
  * @returns {Array}
  */
-function getKeys(obj){
-    let keys = [];
-    for (let key in obj){
-        keys.push(key);
-    }
-    return keys;
-    // recursive - Object.keys(obj).find(key => obj[key] === value)
-}
 
 /**
  * Extract query given a url
@@ -204,6 +214,7 @@ function update(url, behaviorType, behavior, title)
 
         let toSave = {};
         toSave[url] = existingBehaviors;
+        console.log(existingBehaviors);
         storage.set(toSave);
     });
 }
@@ -213,8 +224,26 @@ function update(url, behaviorType, behavior, title)
  * @param array
  * @returns {*}
  */
+//Modified by ZZL
 function selectMostValuableStay(array){
-    return array[0];
+    let stayPosition;
+    let longestTime=0;
+    for (let i = 0; i <= array.length - 1; i++) {
+        if (array[i].duration > longestTime) {
+            longestTime = array[i].duration;
+            stayPosition=array[i].position;
+        }
+
+    }
+    return stayPosition;
+}
+
+function getVideoText(array) {
+    let videoTextSnippet=[];
+    for (let i = 0; i <= array.length - 1; i++) {
+        videoTextSnippet.push(array[i].text);
+    }
+    return videoTextSnippet;
 }
 
 
@@ -230,32 +259,6 @@ function handleMessage(request, sender, sendResponse)
 {
     if (request.type === "coords")
         capture(request.coords);
-
-    let keys = getKeys(request);
-    // Case 1: saved content retrieval based on a single URL
-    if (keys.length === 1){
-        let url = request.url;
-        if (isValidUrl(url)){
-            storage.get(url, function (result)
-            {
-
-                let existingBehaviors = result[url];
-                if(existingBehaviors){
-                    let toSend = {};
-                    for (let key in pageLoadingBehaviorTypes){
-                        if (key in getKeys(existingBehaviors)){
-                            if (key === "video_snippet")
-                                toSend[key] = existingBehaviors[key];
-                            else if (key === "stay")
-                                toSend[key] = selectMostValuableStay(existingBehaviors[key]);
-                        }
-                    }
-                    sendResponse(toSend);
-                }
-
-            });
-        }
-    }
     // Case 2: update
     else{
         let etype = request.event_type;

@@ -23,7 +23,8 @@
                 "js/lib/bootstrap.min.js",
                 "js/lib/jquery-ui.js"],
             "css": [
-                "assets/bootstrap.min.css"
+                "assets/bootstrap.min.css",
+                "assets/style.css"
             ],
             "run_at": "document_end",
             "all_frames": false
