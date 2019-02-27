@@ -7,6 +7,67 @@ let endTime = new Date().getTime();
 let currentPosition = 0;
 const LONG_ENOUGH_MS = 8000;
 let videoDuration;
+let ghostElement, startPos, startY;
+
+
+function mouseDown(e) {
+    e.preventDefault();
+
+    startPos = {x: e.pageX, y: e.pageY};
+    startY = e.y;
+
+    ghostElement = document.createElement('div');
+    ghostElement.style.background = 'blue';
+    ghostElement.style.opacity = '0.1';
+    ghostElement.style.position = 'absolute';
+    ghostElement.style.left = e.pageX + 'px';
+    ghostElement.style.top = e.pageY + 'px';
+    ghostElement.style.width = "0px";
+    ghostElement.style.height = "0px";
+    ghostElement.style.zIndex = "1000000";
+    document.body.appendChild(ghostElement);
+
+    document.addEventListener('mousemove', mouseMove, false);
+    document.addEventListener('mouseup', mouseUp, false);
+
+    return false;
+}
+
+function mouseMove(e) {
+    e.preventDefault();
+
+    const nowPos = {x: e.pageX, y: e.pageY};
+    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+
+    ghostElement.style.width = diff.x + 'px';
+    ghostElement.style.height = diff.y + 'px';
+
+    return false;
+}
+
+function mouseUp(e) {
+    e.preventDefault();
+
+    const nowPos = {x: e.pageX, y: e.pageY};
+    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+
+    document.removeEventListener('mousemove', mouseMove, false);
+    document.removeEventListener('mouseup', mouseUp, false);
+
+    ghostElement.parentNode.removeChild(ghostElement);
+
+    setTimeout(function() {
+        const coords = {
+            w: diff.x,
+            h: diff.y,
+            x: startPos.x,
+            y: startY
+        };
+        endScreenshot(coords);
+    }, 50);
+
+    return false;
+}
 
 function goToPastPageSection(){
     chrome.runtime.sendMessage({"url": currentUrl}, (response) => {
@@ -167,22 +228,45 @@ $(document).arrive('video',function (v) {
 });
 
 
+function startScreenshot() { console.log('start screenshot');
+    //change cursor
+    document.body.style.cursor = 'crosshair';
+    document.addEventListener('mousedown', mouseDown, false);
+}
+
+function endScreenshot(coords) {
+    document.removeEventListener('mousedown', mouseDown, false);
+
+    document.body.style.cursor = 'default';
+
+    console.log('sending message with screenshoot');
+    chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+}
+
+
 // Listening url changes for the current tab.
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
-    setTimeout(function () {
-        console.log("new url:", currentUrl);
-        currentUrl = message.url;
-        query = message.query;
-        if (currentUrl === document.location.href) {
-            if (currentUrl.includes("youtube.com")){
-                removeMarkers();
-                loadMarkers();
+    //TODO: @Zhilin add a message field "type", for new url update: type = new_url
+    if (message.type === "new_url"){
+        setTimeout(function () {
+            console.log("new url:", currentUrl);
+            currentUrl = message.url;
+            query = message.query;
+            if (currentUrl === document.location.href) {
+                if (currentUrl.includes("youtube.com")){
+                    removeMarkers();
+                    loadMarkers();
+                }
+                else{
+                    goToPastPageSection();
+                }
             }
-            else{
-                goToPastPageSection();
-            }
-        }
-    }, 3000);
+        }, 3000);
+    }
+    else if (message.type === "start_screenshots"){
+        startScreenshot();
+    }
+
 });
 
 // When the web page is about to be unloaded.

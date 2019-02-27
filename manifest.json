@@ -32,10 +32,20 @@
     "permissions": [
         "unlimitedStorage",
         "<all_urls>",
+        "activeTab",
         "storage",
         "tabs",
         "contextMenus"
     ],
+    "commands": {
+        "screenshot_command": {
+            "suggested_key": {
+                "default": "Ctrl+I"
+            },
+            "description": "Activate Crop Screen"
+        }
+    },
+
     "browser_action": {
         "default_icon": {
             "19": "assets/19.png",
@@ -54,6 +64,7 @@
                     "js/lib/chrono.min.js",
                     "js/textprocessing.js",
                     "js/queryparser.js",
+                    "js/lib/download.js",
                     "js/background.js"]
     }
 }

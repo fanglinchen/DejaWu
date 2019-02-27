@@ -2,6 +2,9 @@ let storage = chrome.storage.local;
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
 let pageLoadingBehaviorTypes = ["stay", "video_snippet"];
+//used specifically for Retina screen to get the image's correct size
+
+
 
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
@@ -129,6 +132,50 @@ function saveUrlsToTab(urls, tabId){
 }
 
 /**
+ *
+ * @param str
+ * @param coords
+ * @param callback
+ */
+function cropData(str, coords, callback) {
+    let img = new Image();
+
+    img.onload = function() {
+        let canvas = document.createElement('canvas');
+        canvas.width = coords.w;
+        canvas.height = coords.h;
+
+        canvas.getContext('2d').drawImage(img, coords.x*window.devicePixelRatio, coords.y*window.devicePixelRatio, coords.w*window.devicePixelRatio, coords.h*window.devicePixelRatio, 0, 0, coords.w, coords.h);
+
+        callback({dataUri: canvas.toDataURL()});
+    };
+
+    img.src = str;
+}
+
+/**
+ *
+ * @param dataURI
+ */
+function saveFile(dataURI) {
+    download(dataURI, "Screenshot " + new Date().toDateString() + ".png", "image/plain");
+}
+
+/**
+ *
+ * @param coords
+ */
+function capture(coords) {
+    chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
+        cropData(data, coords, function(data) {
+            console.log("Done");
+            saveFile(data.dataUri);
+        });
+    });
+}
+
+
+/**
  * Update, or add, a behavior item on the given web page. Each url corresponds with
  * a map that contains different behavior codes as keys and an array that contains
  * all behavioral information of this type of behavior. For certain information, as
@@ -171,6 +218,15 @@ function selectMostValuableStay(array){
     return array[0];
 }
 
+// Handling shortkey commands
+chrome.commands.onCommand.addListener( function(command) {
+    if(command === "screenshot_command"){
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {type: "start_screenshots" });
+        });
+    }
+});
+
 /**
  * Handling messages from content script.
  * @param request
@@ -180,6 +236,9 @@ function selectMostValuableStay(array){
  */
 function handleMessage(request, sender, sendResponse)
 {
+    if (request.type === "coords")
+        capture(request.coords);
+
     let keys = getKeys(request);
     // Case 1: saved content retrieval based on a single URL
     if (keys.length === 1){
