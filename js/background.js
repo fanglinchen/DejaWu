@@ -193,25 +193,24 @@ function capture(coords) {
  * @param url The url associated with this information.
  * @param behaviorType The type of behavior, as delineated in the behavior code container.
  * @param behavior The actual bundle of behavioral information to be stored.
- * @param title The title of the page.
  */
-function update(url, behaviorType, behavior, title)
+function update(url, behaviorType, behavior)
 {
     //If no previous storage of behavior exists under this url, result would be {}.
     storage.get(url, function (result)
     {
-        // If there are no existing behaviors stored yet to this url, initialize it using the title.
+        // If there are no existing behaviors stored yet to this url,
+        // provide a container.
         let existingBehaviors;
         if(!result[url])
-            existingBehaviors = {title: title};
+            existingBehaviors = {};
         else
             existingBehaviors = result[url];
-
         // Append the new behavior to the end of the list of this type of behavior
         if(!result[url] || !existingBehaviors[behaviorType])
             existingBehaviors[behaviorType] = [];
         existingBehaviors[behaviorType].push(behavior);
-
+        //The url-associated behavior record.
         let toSave = {};
         toSave[url] = existingBehaviors;
         console.log(existingBehaviors);
@@ -260,15 +259,27 @@ function handleMessage(request, sender, sendResponse)
     if (request.type === "coords")
         capture(request.coords);
     // Case 2: update
-    else{
-        let etype = request.event_type;
+    else
+    {
+        //Sift the event type from the allowed list of behaviors.
+        let etype;
+        //Keys for the message, one of them being a behavior type.
+        let keys = Object.keys(request);
+        for(let index in keys)
+            if(behaviorTypes.includes(keys[index]))
+                etype = keys[index];
+        //Invalid message if no event type is given.
+        if(!etype)
+        {
+            console.error("No Event Types Given! ", request);
+            return false;
+        }
         if (behaviorTypes.includes(etype))
         {
             //Record this behavior.
-            update(request.url, etype, request[etype], request.title);
+            update(request.url, etype, request[etype]);
         }
     }
-
     return true;
 }
 

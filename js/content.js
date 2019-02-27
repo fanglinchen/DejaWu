@@ -161,10 +161,7 @@ function saveHighlightedText(e)
     console.log("currentUrl:" + currentUrl);
     console.log("currentPosition:" + currentPosition);
     if(content!== ""){
-        console.log("Sending!");
         chrome.runtime.sendMessage({"url": currentUrl,
-                "title": document.title,
-                "event_type": "highlight",
                 "highlight":
                     {"text": content,
                         "section_id": fetchSectionId(e),
@@ -194,14 +191,11 @@ function saveCopiedText(e)
     let contains_code = false;
     if(content!== ""){
         chrome.runtime.sendMessage({"url": currentUrl,
-                "title": document.title,
-                "event_type": "copy",
                 "copy": {"text": content,
                     "section_id": fetchSectionId(e),
                     "is_code" : contains_code = isCode(e),
                     //"is_image_url": isImageUrl(content),
-                    "time": new Date()},
-                "contains_code": contains_code},
+                    "time": new Date()}},
             function(response) {});
     }
 
