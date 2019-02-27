@@ -63,10 +63,24 @@ function mouseUpHandler(e) {
             x: startPos.x,
             y: startY
         };
-        endScreenshot(coords);
+        endScreenshot(coords,false);
     }, 50);
 
     return false;
+}
+//quit screen shot
+function keyDown(e) {
+    // Hit: ESC
+	if ( e.keyCode === '27') {
+		e.preventDefault();
+		e.stopPropagation();
+
+        // endScreenshot();
+        console.log("ESC pressed");
+        endScreenshot(null, true);
+
+		return false;
+	}
 }
 
 /**
@@ -122,7 +136,6 @@ function scrollHandler() {
     if (endTime - startTime > LONG_ENOUGH_MS) {
         chrome.runtime.sendMessage({
                 "url": currentUrl,
-                "event_type": "stay",
                 "stay": {"position": lastPosition, "duration": endTime - startTime, "time": new Date()}
             },
             function (response) {});
@@ -147,10 +160,7 @@ function saveHighlightedText(e)
     console.log("currentUrl:" + currentUrl);
     console.log("currentPosition:" + currentPosition);
     if(content!== ""){
-        console.log("Sending!");
         chrome.runtime.sendMessage({"url": currentUrl,
-                "title": document.title,
-                "event_type": "highlight",
                 "highlight":
                     {"text": content,
                         "section_id": fetchSectionId(e),
@@ -170,24 +180,16 @@ function saveHighlightedText(e)
  *          is_image_url
  *          time>
  */
-function saveCopiedText(e)
-{
-    //TODO: @Derek - remove event type and title in behavior messages in the hackathon. In the background, the message handler should scan the
-    // key of the map first, and just decides on its own whether to append item to list or not. We don't need to save title because it is already saved
-    // in the background in the tab listener.
+function saveCopiedText(e) {
 
     let content = extractSelectedText();
-    let contains_code = false;
     if(content!== ""){
         chrome.runtime.sendMessage({"url": currentUrl,
-                "title": document.title,
-                "event_type": "copy",
                 "copy": {"text": content,
                     "section_id": fetchSectionId(e),
-                    "is_code" : contains_code = isCode(e),
+                    "is_code" :  isCode(e),
                     //"is_image_url": isImageUrl(content),
-                    "time": new Date()},
-                "contains_code": contains_code},
+                    "time": new Date()}},
             function(response) {});
     }
 
@@ -231,8 +233,6 @@ $(document).arrive('video', function (v) {
                 if (lastVideoTime - lastVideoSnippetStartTime > 3) {
                     chrome.runtime.sendMessage({
                             "url": videoUrl,
-                            "title": document.title,
-                            "event_type": "video_snippet",
                             "video_snippet":
                                 {
                                     "start_time": lastVideoSnippetStartTime,
@@ -264,23 +264,34 @@ function startScreenshot() { console.log('start screenshot');
     //change cursor
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousedown', mouseDownHandler, false);
+    //listener for quiting screenshot
+    document.addEventListener('keydown', keyDown, false);
 }
 
-function endScreenshot(coords) {
+function endScreenshot(coords, quit) {
     document.removeEventListener('mousedown', mouseDownHandler, false);
-
     document.body.style.cursor = 'default';
-
-    console.log('sending message with screenshoot');
-    // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
-    chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+    
+    if(quit){
+        //user pressed ESC quit screenshot. not sending any information.
+        document.removeEventListener('mousemove', mouseMoveHandler, false);
+        document.removeEventListener('mouseup', mouseUpHandler, false);
+     
+        ghostElement.parentNode.removeChild(ghostElement);    
+    }
+    else{
+        
+        console.log('sending message with screenshoot');  
+        // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
+        chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+    }
+    
 }
 
 
 // Listening url changes for the current tab.
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     currentUrl=message.url;
-    //TODO: @Zhilin add a message field "type", for new url update: type = new_url
     if (message.type === "new_url"){
         let videoResponse=message.video;
         let stayResponse=message.position;
@@ -313,8 +324,6 @@ window.onbeforeunload = function () {
     if (currentUrl.includes("youtube.com")) {
         chrome.runtime.sendMessage({
                 "url": videoUrl,
-                "title": document.title,
-                "event_type": "video_snippet",
                 "video_snippet":
                     {
                         "start_time": lastVideoSnippetStartTime,
@@ -329,7 +338,6 @@ window.onbeforeunload = function () {
         if (endTime - startTime > LONG_ENOUGH_MS) {
             chrome.runtime.sendMessage({
                     "url": currentUrl,
-                    "event_type": "stay",
                     "stay": {
                         "position": lastPosition,
                         "duration": endTime - startTime,
