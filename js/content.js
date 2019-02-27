@@ -1,20 +1,15 @@
 let lastVideoTime = 0;
 let lastVideoSnippetStartTime = 0;
-let videoObj, query;
+let videoObj, videoDuration, query, videoUrl;
 let currentUrl = document.location.href;
 let startTime = new Date().getTime();
 let endTime = new Date().getTime();
 let currentPosition = 0;
 const LONG_ENOUGH_MS = 8000;
-let videoDuration;
 let ghostElement, startPos, startY;
-let videoUrl;//
-let lastPosition;// add 2 variables by ZZL
+let lastPosition;
 
-/**
- *
- *****
- */
+
 //Modified goToPastPageSection by ZZL
 function goToPastPageSection(response) {
     console.log("scrolling to " + response);
