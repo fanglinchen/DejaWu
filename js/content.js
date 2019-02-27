@@ -263,17 +263,18 @@ function startScreenshot() { console.log('start screenshot');
 }
 
 function endScreenshot(coords, quit) {
+    document.removeEventListener('mousedown', mouseDownHandler, false);
+    document.body.style.cursor = 'default';
+    
     if(quit){
         //user pressed ESC quit screenshot. not sending any information.
-        document.removeEventListener('mousedown', mouseDownHandler, false);
         document.removeEventListener('mousemove', mouseMoveHandler, false);
         document.removeEventListener('mouseup', mouseUpHandler, false);
-        document.body.style.cursor = 'default';
+     
         ghostElement.parentNode.removeChild(ghostElement);    
     }
     else{
-        document.removeEventListener('mousedown', mouseDownHandler, false);
-        document.body.style.cursor = 'default';
+        
         console.log('sending message with screenshoot');  
         // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
         chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
