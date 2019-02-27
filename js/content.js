@@ -62,10 +62,26 @@ function mouseUpHandler(e) {
             x: startPos.x,
             y: startY
         };
-        endScreenshot(coords);
+        endScreenshot(coords,false);
     }, 50);
 
     return false;
+}
+//quit screen shot
+function keyDown(e) {
+	var keyCode = e.keyCode;
+
+	// Hit: ESC
+	if ( keyCode == '27') {
+		e.preventDefault();
+		e.stopPropagation();
+
+        // endScreenshot();
+        console.log("ESC pressed");
+        endScreenshot(null, true);
+
+		return false;
+	}
 }
 
 /**
@@ -260,16 +276,28 @@ function startScreenshot() { console.log('start screenshot');
     //change cursor
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousedown', mouseDownHandler, false);
+    //listener for quiting screenshot
+    document.addEventListener('keydown', keyDown, false);
 }
 
-function endScreenshot(coords) {
+function endScreenshot(coords, quit) {
     document.removeEventListener('mousedown', mouseDownHandler, false);
-
     document.body.style.cursor = 'default';
-
-    console.log('sending message with screenshoot');
-    // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
-    chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+    
+    if(quit){
+        //user pressed ESC quit screenshot. not sending any information.
+        document.removeEventListener('mousemove', mouseMoveHandler, false);
+        document.removeEventListener('mouseup', mouseUpHandler, false);
+     
+        ghostElement.parentNode.removeChild(ghostElement);    
+    }
+    else{
+        
+        console.log('sending message with screenshoot');  
+        // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
+        chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+    }
+    
 }
 
 
