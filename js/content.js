@@ -136,7 +136,6 @@ function scrollHandler() {
     if (endTime - startTime > LONG_ENOUGH_MS) {
         chrome.runtime.sendMessage({
                 "url": currentUrl,
-                "event_type": "stay",
                 "stay": {"position": lastPosition, "duration": endTime - startTime, "time": new Date()}
             },
             function (response) {});
@@ -181,19 +180,14 @@ function saveHighlightedText(e)
  *          is_image_url
  *          time>
  */
-function saveCopiedText(e)
-{
-    //TODO: @Derek - remove event type and title in behavior messages in the hackathon. In the background, the message handler should scan the
-    // key of the map first, and just decides on its own whether to append item to list or not. We don't need to save title because it is already saved
-    // in the background in the tab listener.
+function saveCopiedText(e) {
 
     let content = extractSelectedText();
-    let contains_code = false;
     if(content!== ""){
         chrome.runtime.sendMessage({"url": currentUrl,
                 "copy": {"text": content,
                     "section_id": fetchSectionId(e),
-                    "is_code" : contains_code = isCode(e),
+                    "is_code" :  isCode(e),
                     //"is_image_url": isImageUrl(content),
                     "time": new Date()}},
             function(response) {});
@@ -240,8 +234,6 @@ $(document).arrive('video', function (v) {
                     let content = lastVideoSnippetStartTime + ":" + lastVideoTime + ":" + videoDuration;
                     chrome.runtime.sendMessage({
                             "url": videoUrl,
-                            "title": document.title,
-                            "event_type": "video_snippet",
                             "video_snippet":
                                 {
                                     "text": content,
@@ -335,8 +327,6 @@ window.onbeforeunload = function () {
         let content = lastVideoSnippetStartTime + ":" + lastVideoTime + ":" + videoDuration;
         chrome.runtime.sendMessage({
                 "url": videoUrl,
-                "title": document.title,
-                "event_type": "video_snippet",
                 "video_snippet":
                     {
                         "text": content,
@@ -352,7 +342,6 @@ window.onbeforeunload = function () {
         if (endTime - startTime > LONG_ENOUGH_MS) {
             chrome.runtime.sendMessage({
                     "url": currentUrl,
-                    "event_type": "stay",
                     "stay": {
                         "position": lastPosition,
                         "duration": endTime - startTime,
