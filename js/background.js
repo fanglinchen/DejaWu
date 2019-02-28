@@ -41,40 +41,45 @@ chrome.tabs.onCreated.addListener(function(tab){
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.status === "complete" && isValidUrl(tab.url)){
-        console.log("new url detected:" + tab.url +" for tab " + tabId);
+        console.log("url for tab updated:" + tab.url +" for tab " + tabId);
         let query = null;
-
-        // look up url history for the current tab.
+        //Look up url history for the current tab.
         storage.get({[tabId.toString()]:[]}, function (item) {
             let pastUrls = item[tabId.toString()];
-
             // Fetch query from the url history of the current tab
-            if (pastUrls.length !== 0){
-                let i= pastUrls.length -1;
-
-                while(i>=0){
-                    query = extractQueryFromUrl(pastUrls[i]);
-                    if (query !== null){
+            if (pastUrls.length !== 0)
+            {
+                console.log("past us", pastUrls);
+                let i = pastUrls.length;
+                //Try get the most recent query.
+                while(--i>=0)
+                {
+                    console.log("i", i);
+                    if((query = extractQueryFromUrl(pastUrls[i]))!==null)
                         break;
-                    }
-                    i--;
                 }
             }
-
-            /*Update the current url to the url's behavior item map, if there isn't one yet, create it at once.*/
-            storage.get({[tab.url]:{}}, function (item) {
-                if(item === {}){
-                    console.log("item{}", item);
-                    saveUrlInfo(tab.url, {visitTime: [new Date()], query: query})
+            //Update the current url to the url's behavior item map, if there isn't
+            //one yet, create it.
+            storage.get(tab.url, function (urlEntry) {
+                //If this url has not been previously stored.
+                if(!urlEntry[tab.url])
+                {
+                    console.log("Url of this tab has not been previously stored!", urlEntry);
+                    saveUrlInfo(tab.url, {visit:[{visitTime: new Date(), query: query}]})
                 }
-                else{
-                    console.log("item n{}", item);
-                    let visitTimes = item.visitTime;
-                    visitTimes.push(new Date());
-                    saveUrlInfo(tab.url, {visitTime:visitTimes, query: query})
+                else
+                {
+                    console.log("Url previously visited!", urlEntry);
+                    //The previous behavioral information garnered.
+                    let behavior = urlEntry[tab.url];
+                    console.log("Behavior ", behavior);
+                    //Add the current time and associated query to this url.
+                    let visits = behavior["visit"];
+                    visits.push({visitTime: new Date(), query: query});
+                    saveUrlInfo(tab.url, behavior)
                 }
             });
-
             //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
             pastUrls.push(tab.url);
             saveUrlsToTab(pastUrls, tabId);
@@ -103,6 +108,42 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 });
 
 /**
+ * Compare if two objects have identical fields and identical corresponding values.
+ * The field "time" is not compared.
+ * At present, comparing two behaviors is restricted to their actual information,
+ * so if the difference is only in event_type, like "copy" and "highlight", while
+ * their content object is the same, the result of comparison will be true.
+ * @param obj1
+ * @param obj2
+ * @returns {boolean}
+ */
+function compare(obj1, obj2)
+{
+    //Fields of both objects
+    let keys1 = Object.keys(obj1);
+    let keys2 = Object.keys(obj2);
+    //Sort the arrays for comparison.
+    keys1.sort();
+    keys2.sort();
+    console.log("keys ", keys1, keys2);
+    //If the two objects no not even have the same number of keys.
+    if(keys1.length !== keys2.length)
+        return false;
+    //Compare per field; spare the "time" field.
+    for(let index in keys1)
+    {
+        console.log(keys1[index], keys2[index], obj1[keys1[index], obj2[keys2[index]]]);
+        //If the field name is not identical.
+        if(keys1[index] !== keys2[index])
+            return false;
+        //If the value is not. Spare "time".
+        else if(keys1[index] !== "time" && obj1[keys1[index]] !== obj2[keys1[index]])
+            return false;
+    }
+    return true;
+}
+
+/**
  * Extract keys from an object, non-recursive
  * @param obj
  * @returns {Array}
@@ -125,11 +166,16 @@ function extractQueryFromUrl(url){
 }
 
 /**
- * Save info to a url item.
- * @param url
- * @param info
+ * Initializes or modifies the namespace for an url of its corresponding visit
+ * information, which is an array of objects with keys "visitTime", and "query";
+ * the latter may be null. This method is invoked when a tab is newly loaded.
+ * The info parameter must be the entire map of behavioral information associated
+ * with this url.
+ * @param url The url whose corresponding behavioral information is to be modified.
+ * @param info The entire map of behavioral information associated.
  */
-function saveUrlInfo(url, info){
+function saveUrlInfo(url, info)
+{
     storage.set({[url]: info});
 }
 
@@ -206,14 +252,38 @@ function update(url, behaviorType, behavior)
             existingBehaviors = {};
         else
             existingBehaviors = result[url];
+        //All previous behaviors of this category.
+        let bhvs;
+        //Whether the current behavior is a duplicate in content of one recorded
+        //before.
+        let isDuplicate = false;
         // Append the new behavior to the end of the list of this type of behavior
         if(!result[url] || !existingBehaviors[behaviorType])
             existingBehaviors[behaviorType] = [];
-        existingBehaviors[behaviorType].push(behavior);
+        else
+        {
+            bhvs = existingBehaviors[behaviorType];
+            //Check if a duplicate behavior of a different access time is encountered.
+            for(let index in bhvs)
+            {
+                if(compare(bhvs[index], behavior))
+                {
+                    if(isDuplicate)
+                        bhvs[index].time.push(behavior.time[0]);
+                    isDuplicate = true;
+                }
+            }
+        }
+        bhvs = existingBehaviors[behaviorType];
+        if(!isDuplicate)
+            //Append this behavior as new behavior if none with the same content
+            //is found.
+            bhvs.push(behavior);
         //The url-associated behavior record.
         let toSave = {};
         toSave[url] = existingBehaviors;
         console.log(existingBehaviors);
+        console.log("Behavior Stored ", toSave);
         storage.set(toSave);
     });
 }
