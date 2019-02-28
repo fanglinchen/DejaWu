@@ -9,3 +9,4 @@ function isImageUrl(text){
         return text.match(regex) !== null;
     return false;
 }
+

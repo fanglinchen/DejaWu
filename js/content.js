@@ -31,16 +31,6 @@ function loadMarkers(response) {
         drawMarker(videostartTime,videoendTime,videoduration);
 }
 
-// add drawMarker by ZZL
-function drawMarker(start,end,duration) {
-    console.log("draw");
-    let $blueBar = $(blueProgressBar);
-    let ratio = end / duration - start / duration,
-        propValue = `scaleX(${ratio})`;
-    $blueBar.css('left', ((start / duration) * 100) + '%');
-    $blueBar.css('transform', propValue);
-    $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueBar);
-}
 /**
  *
  ****
@@ -292,11 +282,21 @@ function endScreenshot(coords, quit) {
 // Listening url changes for the current tab.
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     currentUrl=message.url;
+    if(document.location.href.includes("#")){
+        let sectionId=document.location.href.split("#")[1];
+        console.log(sectionId);
+        console.log(document.getElementById(sectionId));
+        let pTag = document.getElementById(sectionId).parentNode;
+        pTag.classList.add("dejawu");
+        setTimeout(function () {
+            pTag.classList.remove("dejawu");
+        }, 2000);
+    }
     if (message.type === "new_url"){
         let videoResponse=message.video;
         let stayResponse=message.position;
-        //if has code ,don't go page section;
-        if(!currentUrl.includes("#")){
+        //if has code ,don't go to page section;
+        if(!document.location.href.includes("#")){
             goToPastPageSection(stayResponse);
         }
         setTimeout(function () {
@@ -304,18 +304,17 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
             videoUrl = message.url;
             query = message.query;
             // to know Url has already changed
-            if (videoUrl === document.location.href) {
+            if (videoUrl === currentUrl) {
                 if (currentUrl.includes("youtube.com")) {
                     removeMarkers();
                     loadMarkers(videoResponse);
                 }
             }
-        }, 2000);
+        }, 1000);
     }
     else if (message.type === "start_screenshots"){
         startScreenshot();
     }
-sendResponse("get Message")//test
 });
 
 
