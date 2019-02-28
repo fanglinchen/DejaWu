@@ -139,7 +139,7 @@ function scrollHandler() {
         chrome.runtime.sendMessage({
                 "url": currentUrl,
                 "event_type": "stay",
-                "stay": {"position": lastPosition, "duration": endTime - startTime, "time": new Date()}
+                "stay": {"position": lastPosition, "duration": endTime - startTime, "time": [new Date()]}
             },
             function (response) {});
     }
@@ -168,7 +168,7 @@ function saveHighlightedText(e)
                     {"text": content,
                         "section_id": fetchSectionId(e),
                         "position": currentPosition,
-                        "time": new Date()}},
+                        "time": [new Date()]}},
             function(response) {});
     }
 }
@@ -197,10 +197,10 @@ function saveCopiedText(e)
                     "section_id": fetchSectionId(e),
                     "is_code" : contains_code = isCode(e),
                     //"is_image_url": isImageUrl(content),
-                    "time": new Date()}},
+                    "time": [new Date()]}},
             function(response) {});
     }
-
+    console.log("Sending!");
 }
 
 /**
@@ -249,7 +249,7 @@ $(document).arrive('video', function (v) {
                                     "text": content,
                                     "section_id": null,
                                     "position": currentPosition,
-                                    "time": new Date()
+                                    "time": [new Date()]
                                 }
                         },
                         function (response) {
@@ -345,7 +345,7 @@ window.onbeforeunload = function () {
                         "text": content,
                         "section_id": null,
                         "position": currentPosition,
-                        "time": new Date()
+                        "time": [new Date()]
                     }
             },
             function (response) {});
@@ -359,7 +359,7 @@ window.onbeforeunload = function () {
                     "stay": {
                         "position": lastPosition,
                         "duration": endTime - startTime,
-                        "time": new Date()
+                        "time": [new Date()]
                     }
                 },
                 function (response) {});
