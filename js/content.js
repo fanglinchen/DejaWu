@@ -52,20 +52,36 @@ function drawMarker(start,end,duration) {
 function mouseUpHandler(e) {
     e.preventDefault();
 
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+      y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
+
+    //working with negative coordinates
+    var _w = diff.x;
+    var _h = diff.y;
+    var _x = startPos.x;
+    var _y = startY;
+
+    if(parseInt(e.pageY) < startPos.y){
+      //top right
+      _h = Math.abs(parseInt(e.pageY)-startPos.y);
+      _y -= _h;
+    }
+    if(parseInt(e.pageX) < startPos.x){
+      //left bottom
+      _w = Math.abs(parseInt(e.pageX)-startPos.x);
+      _x -= _w;
+    }
 
     document.removeEventListener('mousemove', mouseMoveHandler, false);
     document.removeEventListener('mouseup', mouseUpHandler, false);
 
     ghostElement.parentNode.removeChild(ghostElement);
-
     setTimeout(function() {
         const coords = {
-            w: diff.x,
-            h: diff.y,
-            x: startPos.x,
-            y: startY
+            w: _w,
+            h: _h,
+            x: _x,
+            y: _y
         };
         endScreenshot(coords,false);
     }, 50);
@@ -90,15 +106,14 @@ function keyDownHandler(e) {
  */
 function mouseMoveHandler(e) {
     e.preventDefault();
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
 
-    // ghostElement.style.width = diff.x + 'px';
-    // ghostElement.style.height = diff.y +'px';
+    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+      y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
 
-    ghostElement.style.height = Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top)) + 'px';
-    ghostElement.style.width = Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)) + 'px';
+    ghostElement.style.width = diff.x + 'px';
+    ghostElement.style.height = diff.y +'px';
 
+    //opposite drawing canvas (negative coords)
     if(parseInt(e.pageY) < startPos.y){
       ghostElement.style.top = e.pageY + 'px';
       ghostElement.style.height = Math.abs(parseInt(e.pageY)-startPos.y)+'px';
@@ -107,9 +122,7 @@ function mouseMoveHandler(e) {
       ghostElement.style.left = e.pageX+'px';
       ghostElement.style.width = Math.abs(parseInt(e.pageX)-startPos.x)+'px';
     }
-    //
-    // console.log(ghostElement.style.width);
-    // console.log(ghostElement.style.height);
+
     return false;
 }
 
