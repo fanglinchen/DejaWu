@@ -22,7 +22,7 @@ function formatFileName(date) {
     hours = hours ? hours : 12; // the hour '0' should be '12'
     minutes = minutes < 10 ? '0'+minutes : minutes;
     var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
-   
+
     var filename = "Screen Shot " + year + "-" +
         (month+1) + "-" + _day + " at " + strTime + ".png";
     return filename;
@@ -93,9 +93,23 @@ function mouseMoveHandler(e) {
     const nowPos = {x: e.pageX, y: e.pageY};
     const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
 
-    ghostElement.style.width = diff.x + 'px';
-    ghostElement.style.height = diff.y + 'px';
+    // ghostElement.style.width = diff.x + 'px';
+    // ghostElement.style.height = diff.y +'px';
 
+    ghostElement.style.height = Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top)) + 'px';
+    ghostElement.style.width = Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)) + 'px';
+
+    if(parseInt(e.pageY) < startPos.y){
+      ghostElement.style.top = e.pageY + 'px';
+      ghostElement.style.height = Math.abs(parseInt(e.pageY)-startPos.y)+'px';
+    }
+    if(parseInt(e.pageX) < startPos.x){
+      ghostElement.style.left = e.pageX+'px';
+      ghostElement.style.width = Math.abs(parseInt(e.pageX)-startPos.x)+'px';
+    }
+    //
+    // console.log(ghostElement.style.width);
+    // console.log(ghostElement.style.height);
     return false;
 }
 
@@ -272,24 +286,23 @@ function startScreenshot() {
 function endScreenshot(coords, quit) {
     document.removeEventListener('mousedown', mouseDownHandler, false);
     document.body.style.cursor = 'default';
-    
+
     if(quit){
         //user pressed ESC quit screenshot. not sending any information.
         document.removeEventListener('mousemove', mouseMoveHandler, false);
         document.removeEventListener('mouseup', mouseUpHandler, false);
-     
-        ghostElement.parentNode.removeChild(ghostElement);    
+
+        ghostElement.parentNode.removeChild(ghostElement);
     }
     else{
-        
-        console.log('sending message with screenshoot');  
 
+        console.log('sending message with screenshoot');
         chrome.runtime.sendMessage({"url": currentUrl,
             "screenshot":{coordinates:coords, filename: formatFileName(new Date()), time: new Date()}},
             function(response) {});
 
     }
-    
+
 }
 
 
