@@ -190,8 +190,7 @@ function capture(coords) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
         cropData(data, coords, function(data) {
             console.log("Done");
-            //save format: Screen Shot 2019-02-27 at 2.48.54 PM
-            var rightNow = new Date();
+            const rightNow = new Date();
             saveFile(data.dataUri, "Screen Shot " + rightNow.getFullYear() + "-" +
             rightNow.getMonth() + 1 + "-" + rightNow.getDate() + " at " + formatAMPM(rightNow) + ".png");
         });
