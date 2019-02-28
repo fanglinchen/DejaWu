@@ -283,10 +283,11 @@ function endScreenshot(coords, quit) {
     else{
         
         console.log('sending message with screenshoot');  
-        
+
         chrome.runtime.sendMessage({"url": currentUrl,
             "screenshot":{coordinates:coords, filename: formatFileName(new Date()), time: new Date()}},
             function(response) {});
+
     }
     
 }
@@ -317,12 +318,6 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     }
     else if (message.type === "start_screenshots"){
         startScreenshot();
-    }
-    //get info from background about screenshot
-    else if (message.type === "screenshot_info"){
-        console.log("getting info");
-        curr_screenshot = new screenshot_obj(null, message.screenshot_file_name, message.uri, new Date());
-        
     }
 sendResponse("get Message")//test
 });
