@@ -210,16 +210,16 @@ function cropData(str, coords, callback) {
 }
 
 
-
 /**
  *
- * @param coords
+ * @param _screenshotObj
  */
-function capture(coords) {
+function capture(_screenshotObj) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
-        cropData(data, coords, function(data) {
-            console.log("Done");
-            saveFile(data.dataUri, "Screenshot " + new Date().toDateString() + ".png");
+
+        cropData(data, _screenshotObj.coordinates, function(data) {
+            saveFile(data.dataUri, _screenshotObj.filename);
+
         });
     });
 }
@@ -324,29 +324,27 @@ function getRealUrl(rUrl){
  */
 function handleMessage(request, sender, sendResponse)
 {
-    if (request.type === "coords")
-        capture(request.coords);
-    // Case 2: update
-    else
+    //Sift the event type from the allowed list of behaviors.
+    let etype;
+    //Keys for the message, one of them being a behavior type.
+    let keys = Object.keys(request);
+    for(let index in keys)
+        if(behaviorTypes.includes(keys[index])){
+            etype = keys[index];
+            if (keys[index] === "screenshot")
+                capture(request.screenshot);
+        }
+
+    //Invalid message if no event type is given.
+    if(!etype)
     {
-        //Sift the event type from the allowed list of behaviors.
-        let etype;
-        //Keys for the message, one of them being a behavior type.
-        let keys = Object.keys(request);
-        for(let index in keys)
-            if(behaviorTypes.includes(keys[index]))
-                etype = keys[index];
-        //Invalid message if no event type is given.
-        if(!etype)
-        {
-            console.error("No Event Types Given! ", request);
-            return false;
-        }
-        if (behaviorTypes.includes(etype))
-        {
-            //Record this behavior.
-            update(request.url, etype, request[etype]);
-        }
+        console.error("No Event Types Given! ", request);
+        return false;
+    }
+    if (behaviorTypes.includes(etype))
+    {
+        //Record this behavior.
+        update(request.url, etype, request[etype]);
     }
     return true;
 }

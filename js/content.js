@@ -1,57 +1,87 @@
-let lastVideoTime = 0;
-let lastVideoSnippetStartTime = 0;
-let videoObj, query;
+
+let videoObj, videoDuration, query, videoUrl;
 let currentUrl = document.location.href;
 let startTime = new Date().getTime();
 let endTime = new Date().getTime();
-let currentPosition = 0;
+let currentPosition,lastPosition,lastVideoTime, lastVideoSnippetStartTime = 0;
 const LONG_ENOUGH_MS = 8000;
-let videoDuration;
 let ghostElement, startPos, startY;
-let videoUrl;//
-let lastPosition=0;// add 2 variables by ZZL
 
-/**
- *
- *****
- */
-//Modified goToPastPageSection by ZZL
+
+//use for formatting AM PM
+//save format: Screen Shot 2019-02-27 at 2.48.54 PM
+function formatFileName(date) {
+    var year = date.getFullYear();
+    var _day = date.getDate();
+    var month = date.getMonth();
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var milliseconds = date.getMilliseconds();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
+
+    var filename = "Screen Shot " + year + "-" +
+        (month+1) + "-" + _day + " at " + strTime + ".png";
+    return filename;
+  }
+
+
 function goToPastPageSection(response) {
     console.log("scrolling to " + response);
     window.scrollTo(0, response);//auto scroll function
 }
 
-//Modified loadMarkers by ZZL
 function loadMarkers(response) {
     console.log("load markers...");
         console.log("Message Response: ", response);
-        let videostartTime=response.start_time;
-        let videoendTime=response.end_time;
-        let videoduration=response.duration;
-        drawMarker(videostartTime,videoendTime,videoduration);
+        drawMarker(response.start_time,response.end_time,response.duration);
 }
 
-/**
- *
- ****
- */
+function drawMarker(start,end,duration) {
+    let $blueBar = $(blueProgressBar);
+    let ratio = end / duration - start / duration,
+        propValue = `scaleX(${ratio})`;
+    $blueBar.css('left', ((start / duration) * 100) + '%');
+    $blueBar.css('transform', propValue);
+    $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueBar);
+}
+
 function mouseUpHandler(e) {
     e.preventDefault();
 
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+      y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
+
+    //working with negative coordinates
+    var _w = diff.x;
+    var _h = diff.y;
+    var _x = startPos.x;
+    var _y = startY;
+
+    if(parseInt(e.pageY) < startPos.y){
+      //top right
+      _h = Math.abs(parseInt(e.pageY)-startPos.y);
+      _y -= _h;
+    }
+    if(parseInt(e.pageX) < startPos.x){
+      //left bottom
+      _w = Math.abs(parseInt(e.pageX)-startPos.x);
+      _x -= _w;
+    }
 
     document.removeEventListener('mousemove', mouseMoveHandler, false);
     document.removeEventListener('mouseup', mouseUpHandler, false);
 
     ghostElement.parentNode.removeChild(ghostElement);
-
     setTimeout(function() {
         const coords = {
-            w: diff.x,
-            h: diff.y,
-            x: startPos.x,
-            y: startY
+            w: _w,
+            h: _h,
+            x: _x,
+            y: _y
         };
         endScreenshot(coords,false);
     }, 50);
@@ -59,19 +89,15 @@ function mouseUpHandler(e) {
     return false;
 }
 //quit screen shot
-function keyDown(e) {
-    // Hit: ESC
-	if ( e.keyCode === '27') {
+function keyDownHandler(e) {
+	if ( e.key === 'Escape') {
 		e.preventDefault();
 		e.stopPropagation();
-
-        // endScreenshot();
-        console.log("ESC pressed");
         endScreenshot(null, true);
-
 		return false;
 	}
 }
+
 
 /**
  *
@@ -80,11 +106,22 @@ function keyDown(e) {
  */
 function mouseMoveHandler(e) {
     e.preventDefault();
-    const nowPos = {x: e.pageX, y: e.pageY};
-    const diff = {x: nowPos.x - startPos.x, y: nowPos.y - startPos.y};
+
+    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+      y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
 
     ghostElement.style.width = diff.x + 'px';
-    ghostElement.style.height = diff.y + 'px';
+    ghostElement.style.height = diff.y +'px';
+
+    //opposite drawing canvas (negative coords)
+    if(parseInt(e.pageY) < startPos.y){
+      ghostElement.style.top = e.pageY + 'px';
+      ghostElement.style.height = Math.abs(parseInt(e.pageY)-startPos.y)+'px';
+    }
+    if(parseInt(e.pageX) < startPos.x){
+      ghostElement.style.left = e.pageX+'px';
+      ghostElement.style.width = Math.abs(parseInt(e.pageX)-startPos.x)+'px';
+    }
 
     return false;
 }
@@ -147,9 +184,9 @@ function scrollHandler() {
 function saveHighlightedText(e)
 {
     let content = extractSelectedText();
-    console.log("currentUrl:" + currentUrl);
-    console.log("currentPosition:" + currentPosition);
     if(content!== ""){
+        console.log("currentUrl:" + currentUrl);
+        console.log("currentPosition:" + currentPosition);
         chrome.runtime.sendMessage({"url": currentUrl,
                 "highlight":
                     {"text": content,
@@ -250,53 +287,46 @@ $(document).arrive('video', function (v) {
 });
 
 
-function startScreenshot() { console.log('start screenshot');
+function startScreenshot() {
+    console.log('start screenshot');
     //change cursor
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousedown', mouseDownHandler, false);
     //listener for quiting screenshot
-    document.addEventListener('keydown', keyDown, false);
+    document.addEventListener('keydown', keyDownHandler, false);
 }
 
 function endScreenshot(coords, quit) {
     document.removeEventListener('mousedown', mouseDownHandler, false);
     document.body.style.cursor = 'default';
-    
+
     if(quit){
         //user pressed ESC quit screenshot. not sending any information.
         document.removeEventListener('mousemove', mouseMoveHandler, false);
         document.removeEventListener('mouseup', mouseUpHandler, false);
-     
-        ghostElement.parentNode.removeChild(ghostElement);    
+
+        ghostElement.parentNode.removeChild(ghostElement);
     }
     else{
-        
-        console.log('sending message with screenshoot');  
-        // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
-        chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+
+        console.log('sending message with screenshoot');
+        chrome.runtime.sendMessage({"url": currentUrl,
+            "screenshot":{coordinates:coords, filename: formatFileName(new Date()), time: new Date()}},
+            function(response) {});
+
     }
-    
+
 }
 
 
 // Listening url changes for the current tab.
 chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     currentUrl=message.url;
-    if(document.location.href.includes("#")){
-        let sectionId=document.location.href.split("#")[1];
-        console.log(sectionId);
-        console.log(document.getElementById(sectionId));
-        let pTag = document.getElementById(sectionId).parentNode;
-        pTag.classList.add("dejawu");
-        setTimeout(function () {
-            pTag.classList.remove("dejawu");
-        }, 2000);
-    }
     if (message.type === "new_url"){
         let videoResponse=message.video;
         let stayResponse=message.position;
-        //if has code ,don't go to page section;
-        if(!document.location.href.includes("#")){
+        //if has code ,don't go page section;
+        if(!currentUrl.includes("#")){
             goToPastPageSection(stayResponse);
         }
         setTimeout(function () {
@@ -310,7 +340,7 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
                     loadMarkers(videoResponse);
                 }
             }
-        }, 1000);
+        }, 2000);
     }
     else if (message.type === "start_screenshots"){
         startScreenshot();
