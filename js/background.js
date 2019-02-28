@@ -49,7 +49,6 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             // Fetch query from the url history of the current tab
             if (pastUrls.length !== 0)
             {
-                console.log("past us", pastUrls);
                 let i = pastUrls.length;
                 //Try get the most recent query.
                 while(--i>=0)
@@ -66,7 +65,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 if(!urlEntry[tab.url])
                 {
                     console.log("Url of this tab has not been previously stored!", urlEntry);
-                    saveUrlInfo(tab.url, {visit:[{visitTime: new Date(), query: query}]})
+                    saveUrlInfo(tab.url, {visit:[{visitTime: new Date(), query: query}],
+                                                title: tab.title})
                 }
                 else
                 {
@@ -371,7 +371,7 @@ function omniboxHandler(text, suggest)
     storage.get(null,
         //All the behaviors organized by their urls as keys.
         function (bhvItems) {
-        //Code copied items and the titles of the site they are under.
+            //Code copied items and the titles of the site they are under.
             codeSnippets = [];
             for(let bhvItmKey in bhvItems)
             {
@@ -388,8 +388,26 @@ function omniboxHandler(text, suggest)
                 //in this site.
                 for(let j = 0; j < copy.length; j++)
                     if(copy[j].is_code)
-                        codeSnippets.push({url: bhvItmKey, title: title,
-                                            content: copy[j]});
+                    {
+                        let codeSnippet = {url: bhvItmKey, title: title,
+                            content: copy[j]};
+                        //A list of associated query for this code snippet.
+                        let queries = [];
+                        //Check if this url, and hence this behavior, is
+                        //associated with a query.
+                        for(let index in bhvItm.visit)
+                        {
+                            //The visit being checked.
+                            let visit = bhvItm.visit[index];
+                            if(visit["query"]!==null)
+                                queries.push(visit["query"]);
+                        }
+                        //Append the query information, if present, to the code
+                        //snippet.
+                        if(queries.length !== 0)
+                            codeSnippet["queries"] = queries;
+                        codeSnippets.push(codeSnippet);
+                    }
             }
             let suggestions = [];
             //A holder for segments of code retrieved.
@@ -411,6 +429,18 @@ function omniboxHandler(text, suggest)
                         content: code,
                         description: code
                     });
+                else if(codeSnippets[i].queries)
+                    for(let queryIndex in codeSnippets[i].queries)
+                    {
+                        //The previous queries to this url.
+                        let queryText = codeSnippets[i].queries[queryIndex];
+                        if(queryText.indexOf(text) !== -1)
+                            suggestions.push({
+                                    content: code,
+                                    description: queryText+": "+code
+                                }
+                            )
+                    }
             }
             suggest(suggestions);
         });
