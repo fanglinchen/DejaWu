@@ -85,14 +85,14 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             saveUrlsToTab(pastUrls, tabId);
         });
         storage.get(tab.url, function (result) {
-            let videoSnippets=[];
+            let videoSnippet={};
             let rightPosition=0;
             let existingBehaviors = result[tab.url];
             if (existingBehaviors) {
                 if(existingBehaviors["video_snippet"]){
-                    videoSnippets = getVideoText( existingBehaviors["video_snippet"]);
+                    videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
+                    console.log(videoSnippet);
                 }
-                console.log(videoSnippets);
                 if(existingBehaviors["stay"]){
                     rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
                 }
@@ -100,7 +100,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 chrome.tabs.sendMessage(tabId, {
                     url: tab.url,
                     "type":"new_url",
-                    "video": videoSnippets,
+                    "video": videoSnippet,
                     "position": rightPosition
                 }, function (response) {console.log(response);});
         });
@@ -215,6 +215,20 @@ function cropData(str, coords, callback) {
 }
 
 
+//use for formatting AM PM
+function formatAMPM(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var milliseconds = date.getMilliseconds();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
+    return strTime;
+  }
+  
+
 
 /**
  *
@@ -224,10 +238,16 @@ function capture(coords) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
         cropData(data, coords, function(data) {
             console.log("Done");
-            saveFile(data.dataUri, "Screenshot " + new Date().toDateString() + ".png");
+
+            //save format: Screen Shot 2019-02-27 at 2.48.54 PM
+            const rightNow = new Date();
+            saveFile(data.dataUri, "Screen Shot " + rightNow.getFullYear() + "-" +
+            (rightNow.getMonth()+1) + "-" + rightNow.getDate() + " at " + formatAMPM(rightNow) + ".png");
         });
     });
 }
+
+
 
 
 /**
@@ -289,11 +309,11 @@ function update(url, behaviorType, behavior)
 }
 
 /**
- * TODO: @zhilin add a reasonable algorithm to tell the most valuable stay here
+ * Selecting a most probable stay users would like to revisit
+ * TODO: @ZZL - Consider stay frequency
  * @param array
  * @returns {*}
  */
-//Modified by ZZL
 function selectMostValuableStay(array){
     let stayPosition;
     let longestTime=0;
@@ -307,12 +327,17 @@ function selectMostValuableStay(array){
     return stayPosition;
 }
 
-function getVideoText(array) {
-    let videoTextSnippet=[];
+function getMostValuableVideo(array) {
+    let longestTime=0;
+    let valuableSnippet;
     for (let i = 0; i <= array.length - 1; i++) {
-        videoTextSnippet.push(array[i].text);
+        let snippet=array[i].end_time-array[i].start_time;
+        if(snippet>longestTime){
+            valuableSnippet=array[i];
+            longestTime=snippet;
+        }
     }
-    return videoTextSnippet;
+    return valuableSnippet;
 }
 
 

@@ -2,6 +2,6 @@
 
 .blueProgress{
     transform: scaleX(0);
-    background-color: blue !important;
+    background-color: #15fff5 !important;
     z-index: 35!important;
 }
