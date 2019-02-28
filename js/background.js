@@ -182,6 +182,8 @@ function formatAMPM(date) {
     return strTime;
   }
   
+
+
 /**
  *
  * @param coords
@@ -192,8 +194,9 @@ function capture(coords) {
             console.log("Done");
             //save format: Screen Shot 2019-02-27 at 2.48.54 PM
             var rightNow = new Date();
+            var month = rightNow.getMonth();
             saveFile(data.dataUri, "Screen Shot " + rightNow.getFullYear() + "-" +
-            rightNow.getMonth() + 1 + "-" + rightNow.getDate() + " at " + formatAMPM(rightNow) + ".png");
+            (month+1) + "-" + rightNow.getDate() + " at " + formatAMPM(rightNow) + ".png");
         });
     });
 }
