@@ -7,6 +7,28 @@ let currentPosition,lastPosition,lastVideoTime, lastVideoSnippetStartTime = 0;
 const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
 
+
+//use for formatting AM PM
+//save format: Screen Shot 2019-02-27 at 2.48.54 PM
+function formatFileName(date) {
+    var year = date.getFullYear();
+    var _day = date.getDate();
+    var month = date.getMonth();
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var milliseconds = date.getMilliseconds();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
+   
+    var filename = "Screen Shot " + year + "-" +
+        (month+1) + "-" + _day + " at " + strTime + ".png";
+    return filename;
+  }
+
+
 function goToPastPageSection(response) {
     console.log("scrolling to " + response);
     window.scrollTo(0, response);//auto scroll function
@@ -261,8 +283,18 @@ function endScreenshot(coords, quit) {
     else{
         
         console.log('sending message with screenshoot');  
+        // console.log(screenshot_obj.currScreenShotName);
         // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
-        chrome.runtime.sendMessage({type: 'coords', coords: coords}, function(response) {});
+        var screenshotObj = {
+
+            coordinates:coords,
+            filename: formatFileName(new Date()),
+            time: new Date()
+
+        };
+
+
+        chrome.runtime.sendMessage({type: 'coords', "url": currentUrl, screenshotObj:screenshotObj}, function(response) {});
     }
     
 }
@@ -293,6 +325,12 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     }
     else if (message.type === "start_screenshots"){
         startScreenshot();
+    }
+    //get info from background about screenshot
+    else if (message.type === "screenshot_info"){
+        console.log("getting info");
+        curr_screenshot = new screenshot_obj(null, message.screenshot_file_name, message.uri, new Date());
+        
     }
 sendResponse("get Message")//test
 });
