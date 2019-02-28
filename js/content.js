@@ -1,33 +1,24 @@
-let lastVideoTime = 0;
-let lastVideoSnippetStartTime = 0;
+
 let videoObj, videoDuration, query, videoUrl;
 let currentUrl = document.location.href;
 let startTime = new Date().getTime();
 let endTime = new Date().getTime();
-let currentPosition = 0;
+let currentPosition,lastPosition,lastVideoTime, lastVideoSnippetStartTime = 0;
 const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
-let lastPosition=0;// add 2 variables by ZZL
 
-//Modified goToPastPageSection by ZZL
 function goToPastPageSection(response) {
     console.log("scrolling to " + response);
     window.scrollTo(0, response);//auto scroll function
 }
 
-//Modified loadMarkers by ZZL
 function loadMarkers(response) {
     console.log("load markers...");
         console.log("Message Response: ", response);
-        let videostartTime=response.start_time;
-        let videoendTime=response.end_time;
-        let videoduration=response.duration;
-        drawMarker(videostartTime,videoendTime,videoduration);
+        drawMarker(response.start_time,response.end_time,response.duration);
 }
 
-// add drawMarker by ZZL
 function drawMarker(start,end,duration) {
-    console.log("draw");
     let $blueBar = $(blueProgressBar);
     let ratio = end / duration - start / duration,
         propValue = `scaleX(${ratio})`;
@@ -35,10 +26,7 @@ function drawMarker(start,end,duration) {
     $blueBar.css('transform', propValue);
     $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueBar);
 }
-/**
- *
- ****
- */
+
 function mouseUpHandler(e) {
     e.preventDefault();
 
@@ -63,15 +51,15 @@ function mouseUpHandler(e) {
     return false;
 }
 //quit screen shot
-function keyDown(e) {
-    // Hit: ESC
-	if ( e.keyCode === '27') {
+function keyDownHandler(e) {
+	if ( e.key === 'Escape') {
 		e.preventDefault();
 		e.stopPropagation();
         endScreenshot(null, true);
 		return false;
 	}
 }
+
 
 /**
  *
@@ -147,9 +135,9 @@ function scrollHandler() {
 function saveHighlightedText(e)
 {
     let content = extractSelectedText();
-    console.log("currentUrl:" + currentUrl);
-    console.log("currentPosition:" + currentPosition);
     if(content!== ""){
+        console.log("currentUrl:" + currentUrl);
+        console.log("currentPosition:" + currentPosition);
         chrome.runtime.sendMessage({"url": currentUrl,
                 "highlight":
                     {"text": content,
@@ -250,12 +238,13 @@ $(document).arrive('video', function (v) {
 });
 
 
-function startScreenshot() { console.log('start screenshot');
+function startScreenshot() {
+    console.log('start screenshot');
     //change cursor
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousedown', mouseDownHandler, false);
     //listener for quiting screenshot
-    document.addEventListener('keydown', keyDown, false);
+    document.addEventListener('keydown', keyDownHandler, false);
 }
 
 function endScreenshot(coords, quit) {
