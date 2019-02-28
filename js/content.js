@@ -286,13 +286,11 @@ function endScreenshot(coords, quit) {
         // console.log(screenshot_obj.currScreenShotName);
         // TODO: @yusen change this message to contain url and a screenshot obj with the {coordinates: "", filename: "", time: ""} where the path is something like Screen Shot 2019-02-26 at 8.17.42 PM + ".png"
         var screenshotObj = {
-
             coordinates:coords,
             filename: formatFileName(new Date()),
             time: new Date()
 
         };
-
 
         chrome.runtime.sendMessage({type: 'coords', "url": currentUrl, screenshotObj:screenshotObj}, function(response) {});
     }
@@ -325,12 +323,6 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     }
     else if (message.type === "start_screenshots"){
         startScreenshot();
-    }
-    //get info from background about screenshot
-    else if (message.type === "screenshot_info"){
-        console.log("getting info");
-        curr_screenshot = new screenshot_obj(null, message.screenshot_file_name, message.uri, new Date());
-        
     }
 sendResponse("get Message")//test
 });
