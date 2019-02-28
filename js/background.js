@@ -175,8 +175,10 @@ function cropData(str, coords, callback) {
  */
 function capture(_screenshotObj) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
+
         cropData(data, _screenshotObj.coordinates, function(data) {
             saveFile(data.dataUri, _screenshotObj.filename);
+
         });
     });
 }
