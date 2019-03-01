@@ -1,4 +1,5 @@
 let storage = chrome.storage.local;
+let video_url;//create to change the url of video snippet by ZZL
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
@@ -40,8 +41,11 @@ chrome.tabs.onCreated.addListener(function(tab){
  * 5) save this url history to tab.
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    if (changeInfo.status === "complete" && isValidUrl(tab.url)){
-        console.log("new url detected:" + tab.url +" for tab " + tabId);
+    valuableVideoUrl(tab.url);
+    console.log("timeUrl:"+video_url);//test
+    let tabUrl=getRealUrl(tab.url);
+    if (changeInfo.status === "complete" && isValidUrl(tabUrl)){
+        console.log("new url detected:" + tabUrl +" for tab " + tabId);
         let query = null;
 
         // look up url history for the current tab.
@@ -62,27 +66,27 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             }
 
             /*Update the current url to the url's behavior item map, if there isn't one yet, create it at once.*/
-            storage.get({[tab.url]:{}}, function (item) {
+            storage.get({[tabUrl]:{}}, function (item) {
                 if(item === {}){
                     console.log("item{}", item);
-                    saveUrlInfo(tab.url, {visitTime: [new Date()], query: query})
+                    saveUrlInfo(tabUrl, {visitTime: [new Date()], query: query})
                 }
                 else{
                     console.log("item n{}", item);
                     let visitTimes = item.visitTime;
                     visitTimes.push(new Date());
-                    saveUrlInfo(tab.url, {visitTime:visitTimes, query: query})
+                    saveUrlInfo(tabUrl, {visitTime:visitTimes, query: query})
                 }
             });
 
-            //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
-            pastUrls.push(tab.url);
+            //chrome.tabs.sendMessage(tabId, {url: tabUrl}, function(response) {});
+            pastUrls.push(tabUrl);
             saveUrlsToTab(pastUrls, tabId);
         });
-        storage.get(tab.url, function (result) {
+        storage.get(tabUrl, function (result) {
             let videoSnippet={};
             let rightPosition=0;
-            let existingBehaviors = result[tab.url];
+            let existingBehaviors = result[tabUrl];
             if (existingBehaviors) {
                 if(existingBehaviors["video_snippet"]){
                     videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
@@ -92,12 +96,12 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                     rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
                 }
             }
-                chrome.tabs.sendMessage(tabId, {
-                    url: tab.url,
-                    "type":"new_url",
-                    "video": videoSnippet,
-                    "position": rightPosition
-                }, function (response) {console.log(response);});
+            chrome.tabs.sendMessage(tabId, {
+                url: tabUrl,
+                "type":"new_url",
+                "video": videoSnippet,
+                "position": rightPosition
+            }, function (response) {});
         });
     }
 });
@@ -114,11 +118,48 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
  * @param url
  * @returns {*} the extracted query
  */
+//Modified by ZZL
 function extractQueryFromUrl(url){
     if (url.includes("google.com")) {
         const regex = /(?<=q=).*?(?=&)/s;
         if (url.match(regex) !== null) {
             return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".amazon.com")){
+        const regex = /(?<=k=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".yelp.com")){
+        const regex = /(?<=find_desc=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".linkedin.com")){
+        const regex = /(?<=keywords=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".youtube.com")){
+        const regex = /search_query=(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
+        }
+    }
+    if(url.includes(".github.com"||".stackoverflow.com"||".bbc.co.uk"||".ted.com")){
+        const regex = /q=(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
+        }
+    }
+    if(url.includes(".wikipedia.org")){
+        const regex = /wiki\/(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
         }
     }
     return null;
@@ -249,8 +290,30 @@ function getMostValuableVideo(array) {
     }
     return valuableSnippet;
 }
+//get most valuable video snippet's url and value gives to video_url
+function valuableVideoUrl(vUrl) {
+    storage.get(vUrl, function (result) {
+        let videoSnippet = {};
+        let existingBehaviors = result[vUrl];
+        if (existingBehaviors) {
+            if (existingBehaviors["video_snippet"]) {
+                videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
+                let uString = '&feature=youtu.be&t=' +Math.floor(videoSnippet.start_time);
+                video_url = vUrl.concat(uString);
+            }
+        }
+    });
+}
 
-
+function getRealUrl(rUrl){
+    if(rUrl.includes("&feature=youtu.be&t=")){
+        rUrl=rUrl.split("&feature=youtu.be&t=")[0];
+    }
+    if(rUrl.includes("#")){
+        rUrl=rUrl.split("#")[0];
+    }
+    return rUrl;
+}
 
 /**
  * Handling messages from content script.
@@ -304,7 +367,7 @@ function omniboxHandler(text, suggest)
     storage.get(null,
         //All the behaviors organized by their urls as keys.
         function (bhvItems) {
-        //Code copied items and the titles of the site they are under.
+            //Code copied items and the titles of the site they are under.
             codeSnippets = [];
             for(let bhvItmKey in bhvItems)
             {
@@ -322,7 +385,7 @@ function omniboxHandler(text, suggest)
                 for(let j = 0; j < copy.length; j++)
                     if(copy[j].is_code)
                         codeSnippets.push({url: bhvItmKey, title: title,
-                                            content: copy[j]});
+                            content: copy[j]});
             }
             let suggestions = [];
             //A holder for segments of code retrieved.

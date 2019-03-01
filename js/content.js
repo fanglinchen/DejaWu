@@ -338,7 +338,7 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
             videoUrl = message.url;
             query = message.query;
             // to know Url has already changed
-            if (videoUrl === document.location.href) {
+            if (videoUrl === currentUrl) {
                 if (currentUrl.includes("youtube.com")) {
                     removeMarkers();
                     loadMarkers(videoResponse);
@@ -349,7 +349,6 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
     else if (message.type === "start_screenshots"){
         startScreenshot();
     }
-sendResponse("get Message")//test
 });
 
 
