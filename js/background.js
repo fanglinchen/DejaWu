@@ -383,6 +383,67 @@ function handleMessage(request, sender, sendResponse)
 //when one is potentially adopted by the user, the choices need only be
 //checked from this list.
 let codeSnippets;
+//Simplified behavior data used for suggestions and directing.
+let suggestionHolder;
+
+/**
+ *
+ * @param bhvType
+ * @param bhv
+ * @param omniboxInput
+ * @returns {String} The specific type of behavior the input matches.
+ */
+function behaviorMatchesInput(bhvType, bhv, omniboxInput)
+{
+    if(bhvType === "copy")
+    {
+        //If a code segment is encountered.
+        if(bhv.is_code)
+            if(bhv.text.indexOf(omniboxInput) !== -1)
+                return "code";
+    }
+}
+
+function storeSuggestionSnippet(bhvType, bhv)
+{
+    //The portable data carrier for omnibox suggestion to be returned.
+    let suggestBehavior;
+    if(bhvType === "copy")
+    {
+        if(bhv.is_code)
+        {
+            //Store the behavior-specific fields.
+            suggestBehavior = {content: bhv.text};
+            suggestBehavior["type"] = "code";
+        }
+    }
+    //Add common quantities as section_id to the suggestion carrier.
+    //These are confined to those contained in the behavior itself, not the url,
+    //title, or query, which must be appended in background.omniboxHandler.
+    suggestBehavior["section_id"] = bhv.section_id;
+    //Return simplified suggestion storage.
+    return suggestBehavior;
+}
+
+function makeSuggestionHTML(suggest)
+{
+    console.log("Suggestion Holder", suggestionHolder);
+    //Suggestions to be presented.
+    let suggestions = [];
+    for(let i=0; i<suggestionHolder.length; i++)
+    {
+        //The current suggestion concerned.
+        let suggestion = suggestionHolder[i];
+        //Different categories of suggestion.
+        if(suggestion.type === "code")
+            suggestions.push({
+                content: suggestion.content,
+                description: (suggestion.query.length===0?"":
+                    suggestion.query.toString() + ": ") + suggestion.content
+            });
+    }
+    suggest(suggestions);
+}
 
 /**
  * Handling text inputs from the omnibox and generate suggestions
@@ -390,84 +451,81 @@ let codeSnippets;
  * @param suggest A function for populating suggestions.
  */
 
-function omniboxHandler(text, suggest)
+function omniboxHandler(omniboxText, suggest)
 {
     //Select code segments.
     storage.get(null,
         //All the behaviors organized by their urls as keys.
         function (bhvItems) {
-            //Code copied items and the titles of the site they are under.
-            codeSnippets = [];
-            for(let bhvItmKey in bhvItems)
-            {
+            //A holder for any kind of previous behavior that may prompt a useful
+            //suggestion.
+            suggestionHolder = [];
+            //Loop through each url and examine if any of its behaviors matches the
+            //input given presently in the omnibox by the user.
+            for (let url in bhvItems) {
+                //Behaviors contained under this url.
+                let bhvs = {};
                 //The bundled information to this url.
-                let bhvItm = bhvItems[bhvItmKey];
+                let bhvItm = bhvItems[url];
                 //The title of this page.
                 let title = bhvItm.title;
                 //The previously copied information from this page.
-                let copy = bhvItm.copy;
-                //If no copied content is contained in this site, pass.
-                if(!copy)
-                    continue;
-                //Loop through the possible different code segments contained
-                //in this site.
-                for(let j = 0; j < copy.length; j++)
-                    if(copy[j].is_code)
-                    {
-                        let codeSnippet = {url: bhvItmKey, title: title,
-                            content: copy[j]};
-                        //A list of associated query for this code snippet.
-                        let queries = [];
-                        //Check if this url, and hence this behavior, is
-                        //associated with a query.
-                        for(let index in bhvItm.visit)
+                if (bhvItm.copy)
+                    bhvs["copy"] = bhvItm.copy;
+                //Video snippets.
+                if (bhvItm.video_snippet)
+                    bhvs["video_snippet"] = bhvItm.video_snippet;
+                //Extract the queries and title that may be used for matching.
+                //A list of associated query for this code snippet. The queries
+                //in this array must match the current omnibox input.
+                let queries = [];
+                //Check if this url, and hence this behavior, is
+                //associated with a query.
+                for (let visitIndex in bhvItm.visit) {
+                    //The visit being checked.
+                    let visit = bhvItm.visit[visitIndex];
+                    if (visit["query"] !== null && visit["query"].indexOf(omniboxText)
+                        !== -1)
+                        queries.push(visit["query"]);
+                }
+                //See if this behavior can prompt a suggestion; if it matches
+                //the current input in the omnibox by the user.
+                for (let bhvType in bhvs) {
+                    //The array of behaviors of this type.
+                    let type_behaviors = bhvs[bhvType];
+                    //Determine for each behavior of this type if it matches
+                    //the current input given by the user.
+                    for (let bhvIndex in type_behaviors) {
+                        //The particular behavior of this type concerned.
+                        let bhv = type_behaviors[bhvIndex];
+                        //The specific type of behavior the input triggers. This
+                        //may modify the behavior type stored to one more specific,
+                        //like copy to code.
+                        //If the title matches.
+                        if (
+                            //If the specific content of the behavior matches the given
+                            //input.
+                            behaviorMatchesInput(bhvType, bhv, omniboxText)
+                            || bhvItm.title.indexOf(omniboxText) !== -1
+                            //If one of the queries matches.
+                            || queries.length !== 0)
                         {
-                            //The visit being checked.
-                            let visit = bhvItm.visit[index];
-                            if(visit["query"]!==null)
-                                queries.push(visit["query"]);
+                            console.log("Ready to Store!");
+                            //Store this behavior accordingly. First specifically,
+                            //then add the common attributes.
+                            let snippet = storeSuggestionSnippet(bhvType, bhv);
+                            snippet["title"] = title;
+                            snippet["url"] = url;
+                            snippet["query"] = queries;
+                            //Add this snippet to the overall suggestion container.
+                            suggestionHolder.push(snippet);
                         }
-                        //Append the query information, if present, to the code
-                        //snippet.
-                        if(queries.length !== 0)
-                            codeSnippet["queries"] = queries;
-                        codeSnippets.push(codeSnippet);
+
                     }
+                }
             }
-            let suggestions = [];
-            //A holder for segments of code retrieved.
-            let code;
-            //Push suggestions.
-            for (let i = 0; i < codeSnippets.length; i++)
-            {
-                code = codeSnippets[i].content.text;
-                //If the current sequence typed is included in a code segment.
-                if (code.indexOf(text) !== -1)
-                //Content is that filled when selected, description that appears.
-                    suggestions.push({
-                        content: code,
-                        description: code
-                    });
-                //Or if the text matches the title above that recorded code.
-                else if (codeSnippets[i].title.indexOf(text) !== -1)
-                    suggestions.push({
-                        content: code,
-                        description: code
-                    });
-                else if(codeSnippets[i].queries)
-                    for(let queryIndex in codeSnippets[i].queries)
-                    {
-                        //The previous queries to this url.
-                        let queryText = codeSnippets[i].queries[queryIndex];
-                        if(queryText.indexOf(text) !== -1)
-                            suggestions.push({
-                                    content: code,
-                                    description: queryText+": "+code
-                                }
-                            )
-                    }
-            }
-            suggest(suggestions);
+            //Make suggestions.
+            makeSuggestionHTML(suggest);
         });
 }
 
@@ -479,7 +537,7 @@ function omniboxHandler(text, suggest)
 function acceptInput(text, disposition) {
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
     //If previously extracted code segments match the current text, direct to them.
-    if (!isValidUrl(text) && !codeSnippets) {
+    if (!isValidUrl(text) && !suggestionHolder) {
         return;
     }
     switch (disposition) {
@@ -488,15 +546,15 @@ function acceptInput(text, disposition) {
             let link = text;
             // TODO: @derek rename variables because this is not specific to code
             //If a code snippet should be redirected.
-            for(let index in codeSnippets)
+            for(let index in suggestionHolder)
             {
                 //Snippet of title-bundled copied behavior.
-                let snippet = codeSnippets[index];
-                if (snippet.content.text.trim() === text)
+                let snippet = suggestionHolder[index];
+                if(snippet.content.trim() === text)
                 {
                     link = snippet.url;
-                    link = snippet.url.concat(snippet.content.section_id?
-                        ("#"+snippet.content.section_id):"");
+                    link = snippet.url.concat(snippet.section_id?
+                        ("#"+snippet.section_id):"");
                     break;
                 }
             }
