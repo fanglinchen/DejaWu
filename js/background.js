@@ -1,6 +1,11 @@
 let storage = chrome.storage.local;
+let video_url;//create to change the url of video snippet by ZZL
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
+//Simplified behavior data used for suggestions and directing. By storing them in this array,
+//when one is potentially adopted by the user, the choices need only be
+//checked from this list.
+let suggestionHolder;
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -40,8 +45,11 @@ chrome.tabs.onCreated.addListener(function(tab){
  * 5) save this url history to tab.
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    if (changeInfo.status === "complete" && isValidUrl(tab.url)){
-        console.log("url for tab updated:" + tab.url +" for tab " + tabId);
+    valuableVideoUrl(tab.url);
+    console.log("timeUrl:"+video_url);//test
+    let tabUrl=getRealUrl(tab.url);
+    if (changeInfo.status === "complete" && isValidUrl(tabUrl)){
+        console.log("new url detected:" + tabUrl +" for tab " + tabId);
         let query = null;
         //Look up url history for the current tab.
         storage.get({[tabId.toString()]:[]}, function (item) {
@@ -60,34 +68,34 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             }
             //Update the current url to the url's behavior item map, if there isn't
             //one yet, create it.
-            storage.get(tab.url, function (urlEntry) {
+            storage.get(tabUrl, function (urlEntry) {
                 //If this url has not been previously stored.
-                if(!urlEntry[tab.url])
+                if(!urlEntry[tabUrl])
                 {
                     console.log("Url of this tab has not been previously stored!", urlEntry);
-                    saveUrlInfo(tab.url, {visit:[{visitTime: new Date(), query: query}],
+                    saveUrlInfo(tabUrl, {visit:[{visitTime: new Date(), query: query}],
                                                 title: tab.title})
                 }
                 else
                 {
                     console.log("Url previously visited!", urlEntry);
                     //The previous behavioral information garnered.
-                    let behavior = urlEntry[tab.url];
+                    let behavior = urlEntry[tabUrl];
                     console.log("Behavior ", behavior);
                     //Add the current time and associated query to this url.
                     let visits = behavior["visit"];
                     visits.push({visitTime: new Date(), query: query});
-                    saveUrlInfo(tab.url, behavior)
+                    saveUrlInfo(tabUrl, behavior)
                 }
             });
             //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
-            pastUrls.push(tab.url);
+            pastUrls.push(tabUrl);
             saveUrlsToTab(pastUrls, tabId);
         });
-        storage.get(tab.url, function (result) {
+        storage.get(tabUrl, function (result) {
             let videoSnippet={};
             let rightPosition=0;
-            let existingBehaviors = result[tab.url];
+            let existingBehaviors = result[tabUrl];
             if (existingBehaviors) {
                 if(existingBehaviors["video_snippet"]){
                     videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
@@ -97,12 +105,12 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                     rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
                 }
             }
-                chrome.tabs.sendMessage(tabId, {
-                    url: tab.url,
-                    "type":"new_url",
-                    "video": videoSnippet,
-                    "position": rightPosition
-                }, function (response) {console.log(response);});
+            chrome.tabs.sendMessage(tabId, {
+                url: tabUrl,
+                "type":"new_url",
+                "video": videoSnippet,
+                "position": rightPosition
+            }, function (response) {});
         });
     }
 });
@@ -155,11 +163,48 @@ function compare(obj1, obj2)
  * @param url
  * @returns {*} the extracted query
  */
+//Modified by ZZL
 function extractQueryFromUrl(url){
     if (url.includes("google.com")) {
         const regex = /(?<=q=).*?(?=&)/s;
         if (url.match(regex) !== null) {
             return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".amazon.com")){
+        const regex = /(?<=k=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".yelp.com")){
+        const regex = /(?<=find_desc=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".linkedin.com")){
+        const regex = /(?<=keywords=).*?(?=&)/s;
+        if (url.match(regex) !== null) {
+            return url.match(regex)[0].replace(/\+/g, ' ');
+        }
+    }
+    if(url.includes(".youtube.com")){
+        const regex = /search_query=(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
+        }
+    }
+    if(url.includes(".github.com"||".stackoverflow.com"||".bbc.co.uk"||".ted.com")){
+        const regex = /q=(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
+        }
+    }
+    if(url.includes(".wikipedia.org")){
+        const regex = /wiki\/(.*)/;
+        if (url.match(regex)[1]!== null) {
+            return url.match(regex)[1];
         }
     }
     return null;
@@ -215,39 +260,19 @@ function cropData(str, coords, callback) {
 }
 
 
-//use for formatting AM PM
-function formatAMPM(date) {
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var milliseconds = date.getMilliseconds();
-    var ampm = hours >= 12 ? 'pm' : 'am';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-    minutes = minutes < 10 ? '0'+minutes : minutes;
-    var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
-    return strTime;
-  }
-  
-
-
 /**
  *
- * @param coords
+ * @param _screenshotObj
  */
-function capture(coords) {
+function capture(_screenshotObj) {
     chrome.tabs.captureVisibleTab(null, {format: "png"}, function(data) {
-        cropData(data, coords, function(data) {
-            console.log("Done");
 
-            //save format: Screen Shot 2019-02-27 at 2.48.54 PM
-            const rightNow = new Date();
-            saveFile(data.dataUri, "Screen Shot " + rightNow.getFullYear() + "-" +
-            (rightNow.getMonth()+1) + "-" + rightNow.getDate() + " at " + formatAMPM(rightNow) + ".png");
+        cropData(data, _screenshotObj.coordinates, function(data) {
+            saveFile(data.dataUri, _screenshotObj.filename);
+
         });
     });
 }
-
-
 
 
 /**
@@ -339,8 +364,30 @@ function getMostValuableVideo(array) {
     }
     return valuableSnippet;
 }
+//get most valuable video snippet's url and value gives to video_url
+function valuableVideoUrl(vUrl) {
+    storage.get(vUrl, function (result) {
+        let videoSnippet = {};
+        let existingBehaviors = result[vUrl];
+        if (existingBehaviors) {
+            if (existingBehaviors["video_snippet"]) {
+                videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
+                let uString = '&feature=youtu.be&t=' +Math.floor(videoSnippet.start_time);
+                video_url = vUrl.concat(uString);
+            }
+        }
+    });
+}
 
-
+function getRealUrl(rUrl){
+    if(rUrl.includes("&feature=youtu.be&t=")){
+        rUrl=rUrl.split("&feature=youtu.be&t=")[0];
+    }
+    if(rUrl.includes("#")){
+        rUrl=rUrl.split("#")[0];
+    }
+    return rUrl;
+}
 
 /**
  * Handling messages from content script.
@@ -351,40 +398,34 @@ function getMostValuableVideo(array) {
  */
 function handleMessage(request, sender, sendResponse)
 {
-    if (request.type === "coords")
-        capture(request.coords);
-    // Case 2: update
-    else
+    //Sift the event type from the allowed list of behaviors.
+    let etype;
+    //Keys for the message, one of them being a behavior type.
+    let keys = Object.keys(request);
+    for(let index in keys)
+        if(behaviorTypes.includes(keys[index])){
+            etype = keys[index];
+            if (keys[index] === "screenshot")
+                capture(request.screenshot);
+        }
+
+    //Invalid message if no event type is given.
+    if(!etype)
     {
-        //Sift the event type from the allowed list of behaviors.
-        let etype;
-        //Keys for the message, one of them being a behavior type.
-        let keys = Object.keys(request);
-        for(let index in keys)
-            if(behaviorTypes.includes(keys[index]))
-                etype = keys[index];
-        //Invalid message if no event type is given.
-        if(!etype)
-        {
-            console.error("No Event Types Given! ", request);
-            return false;
-        }
-        if (behaviorTypes.includes(etype))
-        {
-            //Record this behavior.
-            update(request.url, etype, request[etype]);
-        }
+        console.error("No Event Types Given! ", request);
+        return false;
+    }
+    if (behaviorTypes.includes(etype))
+    {
+        //Record this behavior.
+        update(request.url, etype, request[etype]);
     }
     return true;
 }
 
 
-//Code segments extracted as suggestions. By storing them in this array,
-//when one is potentially adopted by the user, the choices need only be
-//checked from this list.
+//Code segments extracted as suggestions.
 let codeSnippets;
-//Simplified behavior data used for suggestions and directing.
-let suggestionHolder;
 
 /**
  *
@@ -504,7 +545,7 @@ function omniboxHandler(omniboxText, suggest)
                         //If the title matches.
                         if (
                             //If the specific content of the behavior matches the given
-                            //input.
+                        //input.
                             behaviorMatchesInput(bhvType, bhv, omniboxText)
                             || bhvItm.title.indexOf(omniboxText) !== -1
                             //If one of the queries matches.
