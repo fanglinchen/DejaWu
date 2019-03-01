@@ -8,24 +8,28 @@ const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
 
 
-//use for formatting AM PM
-//save format: Screen Shot 2019-02-27 at 2.48.54 PM
+/**
+ * TODO: move to another js
+ * Generate file name using a date
+ * Example Format: Screen Shot 2019-02-27 at 2.48.54 PM
+ * @param date
+ * @returns {string}
+ */
+
 function formatFileName(date) {
-    var year = date.getFullYear();
-    var _day = date.getDate();
-    var month = date.getMonth();
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var milliseconds = date.getMilliseconds();
-    var ampm = hours >= 12 ? 'pm' : 'am';
+    let year = date.getFullYear();
+    let _day = date.getDate();
+    let month = date.getMonth();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    let milliseconds = date.getMilliseconds();
+    let ampm = hours >= 12 ? 'pm' : 'am';
     hours = hours % 12;
     hours = hours ? hours : 12; // the hour '0' should be '12'
-    minutes = minutes < 10 ? '0'+minutes : minutes;
-    var strTime = hours + '.' + minutes + '.' + milliseconds + " " + ampm;
+    minutes = minutes < 10 ? '0'+ minutes : minutes;
 
-    var filename = "Screen Shot " + year + "-" +
-        (month+1) + "-" + _day + " at " + strTime + ".png";
-    return filename;
+    return "Screen Shot " + year + "-" +
+        (month + 1) + "-" + _day + " at " + hours + '.' + minutes + '.' + milliseconds + " " + ampm + ".png";
   }
 
 
@@ -56,10 +60,10 @@ function mouseUpHandler(e) {
       y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
 
     //working with negative coordinates
-    var _w = diff.x;
-    var _h = diff.y;
-    var _x = startPos.x;
-    var _y = startY;
+    let _w = diff.x;
+    let _h = diff.y;
+    let _x = startPos.x;
+    let _y = startY;
 
     if(parseInt(e.pageY) < startPos.y){
       //top right
