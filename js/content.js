@@ -34,13 +34,8 @@ function goToPastPageSection(response) {
     window.scrollTo(0, response);//auto scroll function
 }
 
-function loadMarkers(response) {
-    console.log("load markers...");
-        console.log("Message Response: ", response);
-        drawMarker(response.start_time,response.end_time,response.duration);
-}
-
-function drawMarker(start,end,duration) {
+function loadMarkers(start,end,duration) {
+    console.log("load markers.....");
     let $blueBar = $(blueProgressBar);
     let ratio = end / duration - start / duration,
         propValue = `scaleX(${ratio})`;
@@ -48,6 +43,7 @@ function drawMarker(start,end,duration) {
     $blueBar.css('transform', propValue);
     $('div.ytp-play-progress.ytp-swatch-background-color:not(.blueProgress)').after($blueBar);
 }
+
 
 function mouseUpHandler(e) {
     e.preventDefault();
@@ -337,7 +333,7 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
             if (videoUrl === currentUrl) {
                 if (currentUrl.includes("youtube.com")) {
                     removeMarkers();
-                    loadMarkers(videoResponse);
+                    loadMarkers(videoResponse.start_time,videoResponse.end_time,videoResponse.duration);
                 }
             }
         }, 2000);
