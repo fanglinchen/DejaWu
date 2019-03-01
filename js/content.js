@@ -163,7 +163,9 @@ function scrollHandler() {
     if (endTime - startTime > LONG_ENOUGH_MS) {
         chrome.runtime.sendMessage({
                 "url": currentUrl,
-                "stay": {"position": lastPosition, "duration": endTime - startTime, "time": new Date()}
+                "stay": {"position": lastPosition,
+                        "duration": endTime - startTime,
+                        "time": [new Date()]}
             },
             function (response) {});
     }
@@ -192,7 +194,7 @@ function saveHighlightedText(e)
                     {"text": content,
                         "section_id": fetchSectionId(e),
                         "position": currentPosition,
-                        "time": new Date()}},
+                        "time": [new Date()]}},
             function(response) {});
     }
 }
@@ -216,10 +218,10 @@ function saveCopiedText(e) {
                     "section_id": fetchSectionId(e),
                     "is_code" :  isCode(e),
                     //"is_image_url": isImageUrl(content),
-                    "time": new Date()}},
+                    "time": [new Date()]}},
             function(response) {});
     }
-
+    console.log("Sending!");
 }
 
 /**
@@ -370,7 +372,7 @@ window.onbeforeunload = function () {
                     "stay": {
                         "position": lastPosition,
                         "duration": endTime - startTime,
-                        "time": new Date()
+                        "time": [new Date()]
                     }
                 },
                 function (response) {});

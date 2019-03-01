@@ -2,6 +2,10 @@ let storage = chrome.storage.local;
 let video_url;//create to change the url of video snippet by ZZL
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
+//Simplified behavior data used for suggestions and directing. By storing them in this array,
+//when one is potentially adopted by the user, the choices need only be
+//checked from this list.
+let suggestionHolder;
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
 chrome.runtime.onMessage.addListener(handleMessage);
@@ -47,39 +51,44 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.status === "complete" && isValidUrl(tabUrl)){
         console.log("new url detected:" + tabUrl +" for tab " + tabId);
         let query = null;
-
-        // look up url history for the current tab.
+        //Look up url history for the current tab.
         storage.get({[tabId.toString()]:[]}, function (item) {
             let pastUrls = item[tabId.toString()];
-
             // Fetch query from the url history of the current tab
-            if (pastUrls.length !== 0){
-                let i= pastUrls.length -1;
-
-                while(i>=0){
-                    query = extractQueryFromUrl(pastUrls[i]);
-                    if (query !== null){
+            if (pastUrls.length !== 0)
+            {
+                let i = pastUrls.length;
+                //Try get the most recent query.
+                while(--i>=0)
+                {
+                    console.log("i", i);
+                    if((query = extractQueryFromUrl(pastUrls[i]))!==null)
                         break;
-                    }
-                    i--;
                 }
             }
-
-            /*Update the current url to the url's behavior item map, if there isn't one yet, create it at once.*/
-            storage.get({[tabUrl]:{}}, function (item) {
-                if(item === {}){
-                    console.log("item{}", item);
-                    saveUrlInfo(tabUrl, {visitTime: [new Date()], query: query})
+            //Update the current url to the url's behavior item map, if there isn't
+            //one yet, create it.
+            storage.get(tabUrl, function (urlEntry) {
+                //If this url has not been previously stored.
+                if(!urlEntry[tabUrl])
+                {
+                    console.log("Url of this tab has not been previously stored!", urlEntry);
+                    saveUrlInfo(tabUrl, {visit:[{visitTime: new Date(), query: query}],
+                                                title: tab.title})
                 }
-                else{
-                    console.log("item n{}", item);
-                    let visitTimes = item.visitTime;
-                    visitTimes.push(new Date());
-                    saveUrlInfo(tabUrl, {visitTime:visitTimes, query: query})
+                else
+                {
+                    console.log("Url previously visited!", urlEntry);
+                    //The previous behavioral information garnered.
+                    let behavior = urlEntry[tabUrl];
+                    console.log("Behavior ", behavior);
+                    //Add the current time and associated query to this url.
+                    let visits = behavior["visit"];
+                    visits.push({visitTime: new Date(), query: query});
+                    saveUrlInfo(tabUrl, behavior)
                 }
             });
-
-            //chrome.tabs.sendMessage(tabId, {url: tabUrl}, function(response) {});
+            //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
             pastUrls.push(tabUrl);
             saveUrlsToTab(pastUrls, tabId);
         });
@@ -105,6 +114,42 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
         });
     }
 });
+
+/**
+ * Compare if two objects have identical fields and identical corresponding values.
+ * The field "time" is not compared.
+ * At present, comparing two behaviors is restricted to their actual information,
+ * so if the difference is only in event_type, like "copy" and "highlight", while
+ * their content object is the same, the result of comparison will be true.
+ * @param obj1
+ * @param obj2
+ * @returns {boolean}
+ */
+function compare(obj1, obj2)
+{
+    //Fields of both objects
+    let keys1 = Object.keys(obj1);
+    let keys2 = Object.keys(obj2);
+    //Sort the arrays for comparison.
+    keys1.sort();
+    keys2.sort();
+    console.log("keys ", keys1, keys2);
+    //If the two objects no not even have the same number of keys.
+    if(keys1.length !== keys2.length)
+        return false;
+    //Compare per field; spare the "time" field.
+    for(let index in keys1)
+    {
+        console.log(keys1[index], keys2[index], obj1[keys1[index], obj2[keys2[index]]]);
+        //If the field name is not identical.
+        if(keys1[index] !== keys2[index])
+            return false;
+        //If the value is not. Spare "time".
+        else if(keys1[index] !== "time" && obj1[keys1[index]] !== obj2[keys1[index]])
+            return false;
+    }
+    return true;
+}
 
 /**
  * Extract keys from an object, non-recursive
@@ -166,11 +211,16 @@ function extractQueryFromUrl(url){
 }
 
 /**
- * Save info to a url item.
- * @param url
- * @param info
+ * Initializes or modifies the namespace for an url of its corresponding visit
+ * information, which is an array of objects with keys "visitTime", and "query";
+ * the latter may be null. This method is invoked when a tab is newly loaded.
+ * The info parameter must be the entire map of behavioral information associated
+ * with this url.
+ * @param url The url whose corresponding behavioral information is to be modified.
+ * @param info The entire map of behavioral information associated.
  */
-function saveUrlInfo(url, info){
+function saveUrlInfo(url, info)
+{
     storage.set({[url]: info});
 }
 
@@ -247,14 +297,38 @@ function update(url, behaviorType, behavior)
             existingBehaviors = {};
         else
             existingBehaviors = result[url];
+        //All previous behaviors of this category.
+        let bhvs;
+        //Whether the current behavior is a duplicate in content of one recorded
+        //before.
+        let isDuplicate = false;
         // Append the new behavior to the end of the list of this type of behavior
         if(!result[url] || !existingBehaviors[behaviorType])
             existingBehaviors[behaviorType] = [];
-        existingBehaviors[behaviorType].push(behavior);
+        else
+        {
+            bhvs = existingBehaviors[behaviorType];
+            //Check if a duplicate behavior of a different access time is encountered.
+            for(let index in bhvs)
+            {
+                if(compare(bhvs[index], behavior))
+                {
+                    if(isDuplicate)
+                        bhvs[index].time.push(behavior.time[0]);
+                    isDuplicate = true;
+                }
+            }
+        }
+        bhvs = existingBehaviors[behaviorType];
+        if(!isDuplicate)
+            //Append this behavior as new behavior if none with the same content
+            //is found.
+            bhvs.push(behavior);
         //The url-associated behavior record.
         let toSave = {};
         toSave[url] = existingBehaviors;
         console.log(existingBehaviors);
+        console.log("Behavior Stored ", toSave);
         storage.set(toSave);
     });
 }
@@ -350,10 +424,67 @@ function handleMessage(request, sender, sendResponse)
 }
 
 
-//Code segments extracted as suggestions. By storing them in this array,
-//when one is potentially adopted by the user, the choices need only be
-//checked from this list.
+//Code segments extracted as suggestions.
 let codeSnippets;
+
+/**
+ *
+ * @param bhvType
+ * @param bhv
+ * @param omniboxInput
+ * @returns {String} The specific type of behavior the input matches.
+ */
+function behaviorMatchesInput(bhvType, bhv, omniboxInput)
+{
+    if(bhvType === "copy")
+    {
+        //If a code segment is encountered.
+        if(bhv.is_code)
+            if(bhv.text.indexOf(omniboxInput) !== -1)
+                return "code";
+    }
+}
+
+function storeSuggestionSnippet(bhvType, bhv)
+{
+    //The portable data carrier for omnibox suggestion to be returned.
+    let suggestBehavior;
+    if(bhvType === "copy")
+    {
+        if(bhv.is_code)
+        {
+            //Store the behavior-specific fields.
+            suggestBehavior = {content: bhv.text};
+            suggestBehavior["type"] = "code";
+        }
+    }
+    //Add common quantities as section_id to the suggestion carrier.
+    //These are confined to those contained in the behavior itself, not the url,
+    //title, or query, which must be appended in background.omniboxHandler.
+    suggestBehavior["section_id"] = bhv.section_id;
+    //Return simplified suggestion storage.
+    return suggestBehavior;
+}
+
+function makeSuggestionHTML(suggest)
+{
+    console.log("Suggestion Holder", suggestionHolder);
+    //Suggestions to be presented.
+    let suggestions = [];
+    for(let i=0; i<suggestionHolder.length; i++)
+    {
+        //The current suggestion concerned.
+        let suggestion = suggestionHolder[i];
+        //Different categories of suggestion.
+        if(suggestion.type === "code")
+            suggestions.push({
+                content: suggestion.content,
+                description: (suggestion.query.length===0?"":
+                    suggestion.query.toString() + ": ") + suggestion.content
+            });
+    }
+    suggest(suggestions);
+}
 
 /**
  * Handling text inputs from the omnibox and generate suggestions
@@ -361,54 +492,81 @@ let codeSnippets;
  * @param suggest A function for populating suggestions.
  */
 
-function omniboxHandler(text, suggest)
+function omniboxHandler(omniboxText, suggest)
 {
     //Select code segments.
     storage.get(null,
         //All the behaviors organized by their urls as keys.
         function (bhvItems) {
-            //Code copied items and the titles of the site they are under.
-            codeSnippets = [];
-            for(let bhvItmKey in bhvItems)
-            {
+            //A holder for any kind of previous behavior that may prompt a useful
+            //suggestion.
+            suggestionHolder = [];
+            //Loop through each url and examine if any of its behaviors matches the
+            //input given presently in the omnibox by the user.
+            for (let url in bhvItems) {
+                //Behaviors contained under this url.
+                let bhvs = {};
                 //The bundled information to this url.
-                let bhvItm = bhvItems[bhvItmKey];
+                let bhvItm = bhvItems[url];
                 //The title of this page.
                 let title = bhvItm.title;
                 //The previously copied information from this page.
-                let copy = bhvItm.copy;
-                //If no copied content is contained in this site, pass.
-                if(!copy)
-                    continue;
-                //Loop through the possible different code segments contained
-                //in this site.
-                for(let j = 0; j < copy.length; j++)
-                    if(copy[j].is_code)
-                        codeSnippets.push({url: bhvItmKey, title: title,
-                            content: copy[j]});
+                if (bhvItm.copy)
+                    bhvs["copy"] = bhvItm.copy;
+                //Video snippets.
+                if (bhvItm.video_snippet)
+                    bhvs["video_snippet"] = bhvItm.video_snippet;
+                //Extract the queries and title that may be used for matching.
+                //A list of associated query for this code snippet. The queries
+                //in this array must match the current omnibox input.
+                let queries = [];
+                //Check if this url, and hence this behavior, is
+                //associated with a query.
+                for (let visitIndex in bhvItm.visit) {
+                    //The visit being checked.
+                    let visit = bhvItm.visit[visitIndex];
+                    if (visit["query"] !== null && visit["query"].indexOf(omniboxText)
+                        !== -1)
+                        queries.push(visit["query"]);
+                }
+                //See if this behavior can prompt a suggestion; if it matches
+                //the current input in the omnibox by the user.
+                for (let bhvType in bhvs) {
+                    //The array of behaviors of this type.
+                    let type_behaviors = bhvs[bhvType];
+                    //Determine for each behavior of this type if it matches
+                    //the current input given by the user.
+                    for (let bhvIndex in type_behaviors) {
+                        //The particular behavior of this type concerned.
+                        let bhv = type_behaviors[bhvIndex];
+                        //The specific type of behavior the input triggers. This
+                        //may modify the behavior type stored to one more specific,
+                        //like copy to code.
+                        //If the title matches.
+                        if (
+                            //If the specific content of the behavior matches the given
+                        //input.
+                            behaviorMatchesInput(bhvType, bhv, omniboxText)
+                            || bhvItm.title.indexOf(omniboxText) !== -1
+                            //If one of the queries matches.
+                            || queries.length !== 0)
+                        {
+                            console.log("Ready to Store!");
+                            //Store this behavior accordingly. First specifically,
+                            //then add the common attributes.
+                            let snippet = storeSuggestionSnippet(bhvType, bhv);
+                            snippet["title"] = title;
+                            snippet["url"] = url;
+                            snippet["query"] = queries;
+                            //Add this snippet to the overall suggestion container.
+                            suggestionHolder.push(snippet);
+                        }
+
+                    }
+                }
             }
-            let suggestions = [];
-            //A holder for segments of code retrieved.
-            let code;
-            //Push suggestions.
-            for (let i = 0; i < codeSnippets.length; i++)
-            {
-                code = codeSnippets[i].content.text;
-                //If the current sequence typed is included in a code segment.
-                if (code.indexOf(text) !== -1)
-                //Content is that filled when selected, description that appears.
-                    suggestions.push({
-                        content: code,
-                        description: code
-                    });
-                //Or if the text matches the title above that recorded code.
-                else if (codeSnippets[i].title.indexOf(text) !== -1)
-                    suggestions.push({
-                        content: code,
-                        description: code
-                    });
-            }
-            suggest(suggestions);
+            //Make suggestions.
+            makeSuggestionHTML(suggest);
         });
 }
 
@@ -420,7 +578,7 @@ function omniboxHandler(text, suggest)
 function acceptInput(text, disposition) {
     // disposition: "currentTab", "newForegroundTab", or "newBackgroundTab"
     //If previously extracted code segments match the current text, direct to them.
-    if (!isValidUrl(text) && !codeSnippets) {
+    if (!isValidUrl(text) && !suggestionHolder) {
         return;
     }
     switch (disposition) {
@@ -429,15 +587,15 @@ function acceptInput(text, disposition) {
             let link = text;
             // TODO: @derek rename variables because this is not specific to code
             //If a code snippet should be redirected.
-            for(let index in codeSnippets)
+            for(let index in suggestionHolder)
             {
                 //Snippet of title-bundled copied behavior.
-                let snippet = codeSnippets[index];
-                if (snippet.content.text.trim() === text)
+                let snippet = suggestionHolder[index];
+                if(snippet.content.trim() === text)
                 {
                     link = snippet.url;
-                    link = snippet.url.concat(snippet.content.section_id?
-                        ("#"+snippet.content.section_id):"");
+                    link = snippet.url.concat(snippet.section_id?
+                        ("#"+snippet.section_id):"");
                     break;
                 }
             }
