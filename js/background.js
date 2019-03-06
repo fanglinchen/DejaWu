@@ -2,9 +2,42 @@ let storage = chrome.storage.local;
 let video_url;//create to change the url of video snippet by ZZL
 // related to the TODO in content.js @Derek, we don't need to remove the behaviorTypes in background, as in we can use them to screen invalid info.
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
+//The characters that have associated meanings in xml of suggestions that
+//need to be replaced. The replacement characters are contained as values
+//to the keys.
+let xmlChars = {"&": "&amp;"};
 //Simplified behavior data used for suggestions and directing. By storing them in this array,
 //when one is potentially adopted by the user, the choices need only be
 //checked from this list.
+
+/**
+ * A list of suggestions with common fields "url", "title", and "query". Each
+ * suggestion corresponds to one past behavior of the user that is prompted by
+ * the present text input given by the user in the omnibox.
+ *
+ * The matching mechanism is defined in the js/background.behaviorMatchesInput
+ * method, which offers specific matching other than that of title and past
+ * queries.
+ *
+ * Once a behavior matches the current input, js/background.storeSuggestionSnippet
+ * function will be invoked to properly store this suggestion. A prototype holder
+ * that contains the basic entries--url, title, query--will be passed in as a
+ * parameter in case this information is necessary for specific storage. The storage
+ * of this particular suggestion-behavior must also fill the "content" field of
+ * the snippet. The processing is done by the modification of the passed in
+ * prototype snippet, as aforementioned.
+ *
+ * Succeeding this, the suggestion snippet, the holder of the relevant information
+ * of the past behavior to be prompted as a suggestion in the omnibox is stored
+ * in this container, which will modified each time the input changes.
+ *
+ * As the selection of any suggestion, or in general the ascertainment of an
+ * input in the omnibox must supercede some change in input, which triggers the
+ * proper processing and population of this holder, all the behaviors that can
+ * elicit a special direction, i.e. to a specific site, is properly stored in
+ * this holder before js/background.acceptInput is invoked, which checks if
+ * the input matches any suggestion in this container.
+ */
 let suggestionHolder;
 chrome.omnibox.onInputChanged.addListener(omniboxHandler);
 chrome.omnibox.onInputEntered.addListener(acceptInput);
@@ -45,7 +78,7 @@ chrome.tabs.onCreated.addListener(function(tab){
  * 5) save this url history to tab.
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    valuableVideoUrl(tab.url);
+    //valuableVideoUrl(tab.url);
     console.log("timeUrl:"+video_url);//test
     let tabUrl=getRealUrl(tab.url);
     if (changeInfo.status === "complete" && isValidUrl(tabUrl)){
@@ -61,8 +94,18 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 //Try get the most recent query.
                 while(--i>=0)
                 {
-                    console.log("i", i);
-                    if((query = extractQueryFromUrl(pastUrls[i]))!==null)
+                    try
+                    {
+                        //Attempt to extract query.
+                        query = extractQueryFromUrl(pastUrls[i]);
+                    }
+                    catch(exc)
+                    {
+                        //Skip.
+                        continue;
+                    }
+                    //Query extracted must be a string.
+                    if(query !== null && typeof query === "string")
                         break;
                 }
             }
@@ -365,18 +408,16 @@ function getMostValuableVideo(array) {
     return valuableSnippet;
 }
 //get most valuable video snippet's url and value gives to video_url
-function valuableVideoUrl(vUrl) {
-    storage.get(vUrl, function (result) {
-        let videoSnippet = {};
-        let existingBehaviors = result[vUrl];
-        if (existingBehaviors) {
-            if (existingBehaviors["video_snippet"]) {
-                videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
-                let uString = '&feature=youtu.be&t=' +Math.floor(videoSnippet.start_time);
-                video_url = vUrl.concat(uString);
-            }
-        }
-    });
+function valuableVideoUrl(vUrl, videoSnippets)
+{
+    if(!videoSnippets)
+    {
+        console.log("No Video Snippets at this Url: Wrong Passing!");
+        return;
+    }
+    let videoSnippet = getMostValuableVideo(videoSnippets);
+    let uString = '&feature=youtu.be&t=' +Math.floor(videoSnippet.start_time);
+    return vUrl.concat(uString);
 }
 
 function getRealUrl(rUrl){
@@ -445,25 +486,34 @@ function behaviorMatchesInput(bhvType, bhv, omniboxInput)
     }
 }
 
-function storeSuggestionSnippet(bhvType, bhv)
+//The snippet that contains the site-general information is passed in as
+//the third parameter, which is modified by this method.
+function storeSuggestionSnippet(bhvType, bhv, snippet)
 {
     //The portable data carrier for omnibox suggestion to be returned.
-    let suggestBehavior;
+    let suggestBehavior = snippet;
     if(bhvType === "copy")
     {
         if(bhv.is_code)
         {
             //Store the behavior-specific fields.
-            suggestBehavior = {content: bhv.text};
+            suggestBehavior["content"] = bhv.text;
             suggestBehavior["type"] = "code";
         }
+    }
+    else if(bhvType === "video_snippet")
+    {
+        //The current behavior is simply the processed url.
+        suggestBehavior["content"] = suggestBehavior["title"];
+        //Add type and content.
+        suggestBehavior["type"] = "video_snippet";
+        //Add the processed url.
+        suggestBehavior["url"] = bhv;
     }
     //Add common quantities as section_id to the suggestion carrier.
     //These are confined to those contained in the behavior itself, not the url,
     //title, or query, which must be appended in background.omniboxHandler.
     suggestBehavior["section_id"] = bhv.section_id;
-    //Return simplified suggestion storage.
-    return suggestBehavior;
 }
 
 function makeSuggestionHTML(suggest)
@@ -475,19 +525,46 @@ function makeSuggestionHTML(suggest)
     {
         //The current suggestion concerned.
         let suggestion = suggestionHolder[i];
+        //The suggestion formatted.
+        let formattedSuggestion;
         //Different categories of suggestion.
         if(suggestion.type === "code")
-            suggestions.push({
+            formattedSuggestion = {
                 content: suggestion.content,
                 description: (suggestion.query.length===0?"":
                     suggestion.query.toString() + ": ") + suggestion.content
-            });
+            };
+        else if(suggestion.type === "video_snippet")
+        {
+            formattedSuggestion =
+                {
+                    content: suggestion.content,
+                    description: (suggestion.query.length===0?"":
+                        suggestion.query.toString() + ": ") + suggestion.content
+                };
+        }
+        //Check if xml specific strings are encountered in the description.
+        for(let xmlChar in xmlChars)
+        {
+            //The current xml characters concerned.
+            let replacement = xmlChars[xmlChar];
+            if(formattedSuggestion.description.indexOf(xmlChar) !== -1)
+                formattedSuggestion.description =
+                    formattedSuggestion.description.split(xmlChar).join(replacement);
+        }
+        //Suggestion processed.
+        suggestions.push(formattedSuggestion);
     }
     suggest(suggestions);
 }
 
 /**
  * Handling text inputs from the omnibox and generate suggestions
+ *
+ * For those types of behaviors that have no detailed content for matching, other
+ * than the general title and the past queries of the site, their checking part
+ * may be foregone in the background.behaviorMatchesInput method, but should
+ * instead be recorded in the background.storeSuggestionSnippet method.
  * @param text The current text typed by the user, autofill not counter.
  * @param suggest A function for populating suggestions.
  */
@@ -504,7 +581,9 @@ function omniboxHandler(omniboxText, suggest)
             //Loop through each url and examine if any of its behaviors matches the
             //input given presently in the omnibox by the user.
             for (let url in bhvItems) {
-                //Behaviors contained under this url.
+                //Behaviors contained under this url. All behaviors wished to be
+                //processed to prompt a suggestion individually should be
+                //included in this container.
                 let bhvs = {};
                 //The bundled information to this url.
                 let bhvItm = bhvItems[url];
@@ -513,9 +592,6 @@ function omniboxHandler(omniboxText, suggest)
                 //The previously copied information from this page.
                 if (bhvItm.copy)
                     bhvs["copy"] = bhvItm.copy;
-                //Video snippets.
-                if (bhvItm.video_snippet)
-                    bhvs["video_snippet"] = bhvItm.video_snippet;
                 //Extract the queries and title that may be used for matching.
                 //A list of associated query for this code snippet. The queries
                 //in this array must match the current omnibox input.
@@ -528,6 +604,16 @@ function omniboxHandler(omniboxText, suggest)
                     if (visit["query"] !== null && visit["query"].indexOf(omniboxText)
                         !== -1)
                         queries.push(visit["query"]);
+                }
+                //Execute here behaviors that have a one to one correspondence
+                //with the url alone, not specific. Then add it to the multiple
+                //behaviors corresponding to different types to be processed
+                //as a single instance.
+                //Video snippets.
+                if(bhvItm.video_snippet)
+                {
+                    //Select the video snippet to direct unto.
+                    bhvs["video_snippet"] = ({url: valuableVideoUrl(url, bhvItm.video_snippet)});
                 }
                 //See if this behavior can prompt a suggestion; if it matches
                 //the current input in the omnibox by the user.
@@ -543,21 +629,24 @@ function omniboxHandler(omniboxText, suggest)
                         //may modify the behavior type stored to one more specific,
                         //like copy to code.
                         //If the title matches.
-                        if (
+                        if(
                             //If the specific content of the behavior matches the given
-                        //input.
+                            //input.
                             behaviorMatchesInput(bhvType, bhv, omniboxText)
                             || bhvItm.title.indexOf(omniboxText) !== -1
                             //If one of the queries matches.
                             || queries.length !== 0)
                         {
                             console.log("Ready to Store!");
-                            //Store this behavior accordingly. First specifically,
-                            //then add the common attributes.
-                            let snippet = storeSuggestionSnippet(bhvType, bhv);
+                            //Store the general site information and send the
+                            //object to be modified.
+                            let snippet = {};
                             snippet["title"] = title;
                             snippet["url"] = url;
                             snippet["query"] = queries;
+                            //Store this behavior accordingly. First specifically,
+                            //then add the common attributes.
+                            storeSuggestionSnippet(bhvType, bhv, snippet);
                             //Add this snippet to the overall suggestion container.
                             suggestionHolder.push(snippet);
                         }
@@ -591,11 +680,13 @@ function acceptInput(text, disposition) {
             {
                 //Snippet of title-bundled copied behavior.
                 let snippet = suggestionHolder[index];
+                console.log(snippet);
                 if(snippet.content.trim() === text)
                 {
                     link = snippet.url;
                     link = snippet.url.concat(snippet.section_id?
                         ("#"+snippet.section_id):"");
+                    console.log("link ", link);
                     break;
                 }
             }
