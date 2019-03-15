@@ -5,8 +5,7 @@ Déjà Wù is a chrome extension that can help users find stuff they've seen.
 ![Example](https://searchengineland.com/figz/wp-content/seloads/2018/09/Chrome_Omnibox-search.gif)
 
 ## How to run
-_I'll assume that you already read the [Webpack docs](https://webpack.github.io/docs) and the [Chrome Extension](https://developer.chrome.com/extensions/getstarted) docs._
-
+Before you get started, please check out [this tutorial on Webpack](https://www.youtube.com/watch?v=GU-2T7k9NfI)._
 
 1. Check if your Node.js version is >= 6.
 2. Clone the repository.
