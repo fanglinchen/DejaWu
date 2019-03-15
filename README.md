@@ -5,7 +5,7 @@ Déjà Wù is a chrome extension that can help users find stuff they've seen.
 ![Example](https://searchengineland.com/figz/wp-content/seloads/2018/09/Chrome_Omnibox-search.gif)
 
 ## How to run
-Before you get started, please check out [this tutorial on Webpack](https://www.youtube.com/watch?v=GU-2T7k9NfI)._
+Before you get started, please check out [this tutorial on Webpack](https://www.youtube.com/watch?v=GU-2T7k9NfI). Then go through the following:
 
 1. Check if your Node.js version is >= 6.
 2. Clone the repository.
@@ -19,9 +19,7 @@ Before you get started, please check out [this tutorial on Webpack](https://www.
     4. Select the `build` folder.
 
 ## Structure
-All your extension's development code must be placed in `src` folder, including the extension manifest.
-
-The boilerplate is already prepared to have a popup, a options page and a background page. You can easily customize this.
+All the extension's development code is placed in `src` folder, including the extension manifest.
 
 Each page has its own [assets package defined](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/blob/master/webpack.config.js#L16-L20). So, to code on popup you must start your code on `src/js/popup.js`, for example.
 
