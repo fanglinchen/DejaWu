@@ -1,8 +1,9 @@
 import SiphonTools from 'siphon-tools'
 import {SnippetSelector, Snippet} from "siphon-tools"
 
-
+let blueProgressBar = `<div class="ytp-play-progress ytp-swatch-background-color blueProgress"></div>`;
 require("arrive");
+import $ from 'jquery';
 
 let videoObj, videoDuration, query, videoUrl;
 let currentUrl = document.location.href;
@@ -17,7 +18,7 @@ SiphonTools.initializeSelectors([
         onTrigger: (cptrWindow, e) => {
             _cptrWindow = cptrWindow;
             let rect = cptrWindow.getBoundingClientRect();
-            console.log(rect)
+            console.log(rect);
             let annotation = new Snippet(rect);
             console.log(annotation);
         }
@@ -33,6 +34,12 @@ SiphonTools.enable();
 function isPlayingYoutubeAd(){
     return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
+
+function removeMarkers(){
+    console.log("remove markers...");
+    $('div.ytp-play-progress.ytp-swatch-background-color').remove('.blueProgress');
+}
+
 
 function isCode(e){
     let cur = e.target;
@@ -189,7 +196,6 @@ function mouseDownHandler(e) {
 /**
  * Save part of pages with long stay.
  */
-//Modified by ZZL
 function scrollHandler() {
     endTime = new Date().getTime();
     if (endTime - startTime > LONG_ENOUGH_MS) {
@@ -281,7 +287,6 @@ function extractSelectedText()
  *  video_duration>
  */
 document.arrive('video', function (v) {
-    console.log("video");
     videoObj = v;
     videoObj.ontimeupdate = function () {
         if (!isPlayingYoutubeAd()) {

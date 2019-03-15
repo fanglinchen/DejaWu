@@ -1,4 +1,4 @@
-
+/* global chrome*/
 let video_url;//create to change the url of video snippet by ZZL
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
 //The characters that have associated meanings in xml of suggestions that
@@ -8,6 +8,22 @@ let xmlChars = {"&": "&amp;"};
 
 require("downloadjs");
 
+function isValidUrl(text) {
+    const valid = /((https?):\/\/)?(([w|W]{3}\.)+)?[a-zA-Z0-9\-\.]{3,}\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?/;
+    return valid.test(text);
+}
+
+
+function getRootUrl(rUrl){
+    if(rUrl.includes("&feature=youtu.be&t=")){
+        rUrl=rUrl.split("&feature=youtu.be&t=")[0];
+    }
+
+    if(rUrl.includes("#")){
+        rUrl=rUrl.split("#")[0];
+    }
+    return rUrl;
+}
 /**
  * A list of suggestions with common fields "url", "title", and "query". Each
  * suggestion corresponds to one past behavior of the user that is prompted by
@@ -49,14 +65,6 @@ chrome.runtime.onInstalled.addListener(function () {
     });
 });
 
-// Handling shortkey commands
-chrome.commands.onCommand.addListener( function(command) {
-    if(command === "screenshot_command"){
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {type: "start_screenshots" });
-        });
-    }
-});
 
 // When a tab just got created.
 chrome.tabs.onCreated.addListener(function(tab){
@@ -76,7 +84,6 @@ chrome.tabs.onCreated.addListener(function(tab){
  * 5) save this url history to tab.
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    console.log("timeUrl:"+video_url);//test
     let tabUrl = getRootUrl(tab.url);
     if (changeInfo.status === "complete" && isValidUrl(tabUrl)){
         console.log("new url detected:" + tabUrl +" for tab " + tabId);
@@ -197,7 +204,6 @@ function compare(obj1, obj2)
  * @param url
  * @returns {*} the extracted query
  */
-//Modified by ZZL
 function extractQueryFromUrl(url){
     if (url.includes("google.com")) {
         const regex = /(?<=q=).*?(?=&)/s;
