@@ -1,9 +1,0 @@
-/* TODO: remove unused styles below The Modal (background) */
-
-.blueProgress{
-    transform: scaleX(0);
-    background-color: #15fff5 !important;
-    z-index: 35!important;
-}
-
-

@@ -1,40 +1,113 @@
-<h1 align="center">
-  <a href="https://github.com/fanglinchen/DejaWu" title="DejaWu">
-    <img alt="DejaWu" src="https://github.com/fanglinchen/DejaWu/raw/master/assets/128.png" width="100px" height="100px" />
-  </a>
-  <br />
-  Déjà Wù
-</h1>
+# Chrome Extension Webpack Boilerplate
 
-Déjà Wù is a chrome extension that can help users find stuff they've seen. [ [Scenario Sheet](https://docs.google.com/document/d/1_vBY0j2QEbjRc0NlRFsm7qUONufinM4VB0Kkb7f8Zcs/edit?usp=sharing) ]
+A basic foundation boilerplate for rich Chrome Extensions using [Webpack](https://webpack.github.io/) to help you write modular and modern Javascript code, load CSS easily and [automatic reload the browser on code changes](https://webpack.github.io/docs/webpack-dev-server.html#automatic-refresh).
 
-![Alt Text](https://storage.googleapis.com/gweb-uniblog-publish-prod/original_images/Chrome_Omnibox-final.gif)
-
-Here are some rationales while we are designing Deja Wu.
+## Developing a new extension
+_I'll assume that you already read the [Webpack docs](https://webpack.github.io/docs) and the [Chrome Extension](https://developer.chrome.com/extensions/getstarted) docs._
 
 
-**Insight 1**: Personal information or knowledge are managed by individual tools, which causes information fragmentation. This introduces user inefficiencies because users are left to associate different related information items and maintain consistency accross separate project hierachies. 
+1. Check if your Node.js version is >= 6.
+2. Clone the repository.
+3. Install [yarn](https://yarnpkg.com/lang/en/docs/install/).
+4. Run `yarn`.
+5. Change the package's name and description on `package.json`.
+6. Change the name of your extension on `src/manifest.json`.
+7. Run `npm run start`
+8. Load your extension on Chrome following:
+    1. Access `chrome://extensions/`
+    2. Check `Developer mode`
+    3. Click on `Load unpacked extension`
+    4. Select the `build` folder.
+8. Have fun.
 
-**Insight 2**: information items are meaningful beyond the context of the tool which manages them. Email items are usually informing new calendar items; file folders are structured 
+## Structure
+All your extension's development code must be placed in `src` folder, including the extension manifest.
 
-**Insight 3**: all one web -> office web/ calendar web/ email web/ web is for most of the information access. 
+The boilerplate is already prepared to have a popup, a options page and a background page. You can easily customize this.
 
-**Insight 4**: knowledge work is evolutionary by nature. It is equally important to investigate the transience of information, where does it come from, how is it passed from one tool to another and when is it no longer needed. 
+Each page has its own [assets package defined](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/blob/master/webpack.config.js#L16-L20). So, to code on popup you must start your code on `src/js/popup.js`, for example.
 
-**Insight 5**: introducing additional models or interfaces generally cause learning curve on users. To lower the cognitive overhead in adjusting to Deja Wu, we integrate Deja Wu as part of the existing workflow of browser search when users are in need of accessing information. There are no additional user interfaces - for example, WorldBrain provides an alternative display to the right of the search results whenever user search something in Google, which 1) overshadows the structured knowledge graph content on the right, and 2) introduces a cognitive overhead for users to wonder which information to go to. 
+You must use the [ES6 modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import) to a better code organization. The boilerplate is already prepared to that and [here you have a little example](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/blob/master/src/js/popup.js#L2-L4).
 
-**Insight 6**: a timeline might improve the awareness of ongoing activities therefore help knowledge workers bettter focus on their tasks. 
+## Webpack auto-reload and HRM
+To make your workflow much more efficient this boilerplate uses the [webpack server](https://webpack.github.io/docs/webpack-dev-server.html) to development (started with `npm run server`) with auto reload feature that reloads the browser automatically every time that you save some file o your editor.
 
-Study decisions:
+You can run the dev mode on other port if you want. Just specify the env var `port` like this:
 
-1. Participants were recruited from a broad range of backgrounds, including software developments, researchers, education practioners to represent different types of knowledge work. We required participants to have experience with Chrome browser and use Chrome browser on a daily basis for personal use. 
+```
+$ PORT=6002 npm run start
+```
 
-Design decisions:
+## Content Scripts
 
-1. Deja Wu embraces the entire life cycle of complex knowledge work, acknowledging short- and long-term planning, archiving, multitasking and self-interruption in user's online activity. Without providing support for these practices, the benefits of activity-centric systems are potentially lost since low-level application and document configuration problems are simply replaced with higher-level activity management challenges.
+Although this boilerplate uses the webpack dev server, it's also prepared to write all your bundles files on the disk at every code change, so you can point, on your extension manifest, to your bundles that you want to use as [content scripts](https://developer.chrome.com/extensions/content_scripts), but you need to exclude these entry points from hot reloading [(why?)](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/issues/4#issuecomment-261788690). To do so you need to expose which entry points are content scripts on the `webpack.config.js` using the `chromeExtensionBoilerplate -> notHotReload` config. Look the example below.
 
-2. When users are engaged in information consumption, Deja Wu's user interface is kept to a bare minimum, no new interface elements are introduced, as compared to other personal information management systems such as [WorldBrain]. Casted into a omnibox, the search bar is the heart of the extension, matching user-provided text queries to learned information items visited by users. 
+Let's say that you want use the `myContentScript` entry point as content script, so on your `webpack.config.js` you will configure the entry point and exclude it from hot reloading, like this:
+
+```js
+{
+  …
+  entry: {
+    myContentScript: "./src/js/myContentScript.js"
+  },
+  chromeExtensionBoilerplate: {
+    notHotReload: ["myContentScript"]
+  }
+  …
+}
+```
+
+and on your `src/manifest.json`:
+
+```json
+{
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/*"],
+      "js": ["myContentScript.bundle.js"]
+    }
+  ]
+}
+
+```
+
+## Packing
+After the development of your extension run the command
+
+```
+$ NODE_ENV=production npm run build
+```
+Now, the content of `build` folder will be the extension ready to be submitted to the Chrome Web Store. Just take a look at the [official guide](https://developer.chrome.com/webstore/publish) to more infos about publishing.
+
+## Secrets
+If you are developing an extension that talks with some API you probably are using different keys for testing and production. Is a good practice you not commit your secret keys and expose to anyone that have access to the repository.
+
+To this task this boilerplate import the file `./secrets.<THE-NODE_ENV>.js` on your modules through the module named as `secrets`, so you can do things like this:
+
+_./secrets.development.js_
+
+```js
+export default { key: "123" };
+```
+
+_./src/popup.js_
+
+```js
+import secrets from "secrets";
+ApiCall({ key: secrets.key });
+```
+:point_right: The files with name `secrets.*.js` already are ignored on the repository.
+
+## With React.js
+:bulb: If you want use [React.js](https://facebook.github.io/react/) with this boilerplate, check the **[react branch](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/tree/react)**.
 
 
-3. Colors, icons and xxx are powerful cues for recall by invoking episodic memory, and used in the suggestions for users to decide whether access a particular piece of information item. 
+## Contributing
 
+1. **Please!! Do not create a pull request without an issue before discussing the problem.**
+2. On your PR make sure that you are following the current codebase style.
+3. Your PR must be single purpose. Resolve just one problem on your PR.
+4. Make sure to commit in the same style that we are committing until now on the project.
+
+-------------
+Samuel Simões ~ [@samuelsimoes](https://twitter.com/samuelsimoes) ~ [Blog](http://blog.samuelsimoes.com/)

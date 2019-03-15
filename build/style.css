@@ -1,0 +1,19 @@
+.blueProgress{
+    transform: scaleX(0);
+    background-color: #15fff5 !important;
+    z-index: 35!important;
+}
+
+.siphon-selection-window {
+    /* position: absolute;
+    border: 1px dashed #888888;
+    z-index: 1000;
+    background-color: transparent; */
+
+    position: absolute;
+    border: 2px dashed rgba(193, 40, 27, 0.9);
+    border-radius: 2px;
+    z-index: 1000;
+    background-color: rgba(0, 200, 0, 0.05);
+}
+
