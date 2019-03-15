@@ -1,8 +1,10 @@
-# Chrome Extension Webpack Boilerplate
+# Deja Wu
 
-A basic foundation boilerplate for rich Chrome Extensions using [Webpack](https://webpack.github.io/) to help you write modular and modern Javascript code, load CSS easily and [automatic reload the browser on code changes](https://webpack.github.io/docs/webpack-dev-server.html#automatic-refresh).
+Déjà Wù is a chrome extension that can help users find stuff they've seen.
 
-## Developing a new extension
+![Example](https://searchengineland.com/figz/wp-content/seloads/2018/09/Chrome_Omnibox-search.gif)
+
+## How to run
 _I'll assume that you already read the [Webpack docs](https://webpack.github.io/docs) and the [Chrome Extension](https://developer.chrome.com/extensions/getstarted) docs._
 
 
@@ -10,15 +12,12 @@ _I'll assume that you already read the [Webpack docs](https://webpack.github.io/
 2. Clone the repository.
 3. Install [yarn](https://yarnpkg.com/lang/en/docs/install/).
 4. Run `yarn`.
-5. Change the package's name and description on `package.json`.
-6. Change the name of your extension on `src/manifest.json`.
-7. Run `npm run start`
-8. Load your extension on Chrome following:
+5. Run `npm run start`
+6. Load your extension on Chrome following:
     1. Access `chrome://extensions/`
     2. Check `Developer mode`
     3. Click on `Load unpacked extension`
     4. Select the `build` folder.
-8. Have fun.
 
 ## Structure
 All your extension's development code must be placed in `src` folder, including the extension manifest.
@@ -66,6 +65,3 @@ import secrets from "secrets";
 ApiCall({ key: secrets.key });
 ```
 :point_right: The files with name `secrets.*.js` already are ignored on the repository.
-
-## With React.js
-:bulb: If you want use [React.js](https://facebook.github.io/react/) with this boilerplate, check the **[react branch](https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate/tree/react)**.
