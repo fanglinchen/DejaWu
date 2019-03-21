@@ -13,14 +13,20 @@ let currentPosition,lastPosition,lastVideoTime, lastVideoSnippetStartTime = 0;
 const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
 let _cptrWindow;
+let rect;//screen shot rect
 SiphonTools.initializeSelectors([
     SnippetSelector({
         onTrigger: (cptrWindow, e) => {
             _cptrWindow = cptrWindow;
-            let rect = cptrWindow.getBoundingClientRect();
+            rect = cptrWindow.getBoundingClientRect();
             console.log(rect);
             let annotation = new Snippet(rect);
             console.log(annotation);
+
+            console.log("test keydown"); 
+            document.addEventListener('keydown', keyDownHandler, false);
+            document.addEventListener('mousedown', mouseDownHandler, false);
+            
         }
     })
 ]);
@@ -34,6 +40,27 @@ SiphonTools.enable();
 function isPlayingYoutubeAd(){
     return $(".ytp-play-progress").css("background-color") === "rgb(255, 204, 0)";
 }
+
+
+/**
+ * handle pressing esc to quit screenshot
+ * @param {*} e 
+ */
+function keyDownHandler(e) {
+    if ( e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("esc pressed")
+        document.removeEventListener('mousedown', mouseDownHandler, false);
+        document.removeEventListener('keydown', keyDownHandler, false);
+        _cptrWindow.parentNode.removeChild(_cptrWindow)
+        // _cptrWindow.remove()
+        
+        return false;
+    }
+}
+
+
 
 function removeMarkers(){
     console.log("remove markers...");
@@ -128,14 +155,14 @@ function mouseUpHandler(e) {
     return false;
 }
 //quit screen shot
-function keyDownHandler(e) {
-    if ( e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        endScreenshot(null, true);
-        return false;
-    }
-}
+// function keyDownHandler(e) {
+//     if ( e.key === 'Escape') {
+//         e.preventDefault();
+//         e.stopPropagation();
+//         endScreenshot(null, true);
+//         return false;
+//     }
+// }
 
 
 /**
@@ -173,22 +200,34 @@ function mouseMoveHandler(e) {
 function mouseDownHandler(e) {
     e.preventDefault();
 
-    startPos = {x: e.pageX, y: e.pageY};
-    startY = e.y;
+    // startPos = {x: e.pageX, y: e.pageY};
+    // startY = e.y;
 
-    ghostElement = document.createElement('div');
-    ghostElement.style.background = 'blue';
-    ghostElement.style.opacity = '0.1';
-    ghostElement.style.position = 'absolute';
-    ghostElement.style.left = e.pageX + 'px';
-    ghostElement.style.top = e.pageY + 'px';
-    ghostElement.style.width = "0px";
-    ghostElement.style.height = "0px";
-    ghostElement.style.zIndex = "1000000";
-    document.body.appendChild(ghostElement);
+    // ghostElement = document.createElement('div');
+    // ghostElement.style.background = 'blue';
+    // ghostElement.style.opacity = '0.1';
+    // ghostElement.style.position = 'absolute';
+    // ghostElement.style.left = e.pageX + 'px';
+    // ghostElement.style.top = e.pageY + 'px';
+    // ghostElement.style.width = "0px";
+    // ghostElement.style.height = "0px";
+    // ghostElement.style.zIndex = "1000000";
+    // document.body.appendChild(ghostElement);
 
-    document.addEventListener('mousemove', mouseMoveHandler, false);
-    document.addEventListener('mouseup', mouseUpHandler, false);
+    // document.addEventListener('mousemove', mouseMoveHandler, false);
+    // document.addEventListener('mouseup', mouseUpHandler, false);
+    var x = e.pageX;
+    var y = e.pageY;
+    var w = e.width
+    var h = e.height
+
+    if (!(x < rect.x && y < rect.y  && w < rect.width && h < rect.height)){
+        // mouse is not in rect.
+        document.removeEventListener('mousedown', mouseDownHandler, false);
+        document.removeEventListener('keydown', keyDownHandler, false);
+        console.log("remove frome first");
+        _cptrWindow.remove()
+    }
 
     return false;
 }
