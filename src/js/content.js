@@ -3,8 +3,9 @@ import {SnippetSelector, Snippet} from "siphon-tools"
 
 let blueProgressBar = `<div class="ytp-play-progress ytp-swatch-background-color blueProgress"></div>`;
 require("arrive");
+import ReactDOM from "react-dom"
 import $ from 'jquery';
-
+import Tooltip from './snippet_tooltip';
 let videoObj, videoDuration, query, videoUrl;
 let currentUrl = document.location.href;
 let startTime = new Date().getTime();
@@ -13,7 +14,10 @@ let currentPosition,lastPosition,lastVideoTime, lastVideoSnippetStartTime = 0;
 const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
 let _cptrWindow;
-let rect;//screen shot rect
+let rect;
+
+import React from 'react';
+
 SiphonTools.initializeSelectors([
     SnippetSelector({
         onTrigger: (cptrWindow, e) => {
@@ -457,6 +461,18 @@ window.onbeforeunload = function () {
     }
 };
 
+
+let domContainerNode = document.createElement('div');
+domContainerNode.setAttribute('id', 'test-div');
+domContainerNode.style.position = 'fixed';
+//TODO: @yusen change here to update the position according to the snippet position.
+domContainerNode.style.top = '100px';
+domContainerNode.style.left = '200px';
+document.body.appendChild(domContainerNode);
+
+
+
+ReactDOM.render(<Tooltip />, domContainerNode);
 document.addEventListener('copy', saveCopiedText);
 document.addEventListener('mouseup', saveHighlightedText);
 window.addEventListener('scroll', scrollHandler);

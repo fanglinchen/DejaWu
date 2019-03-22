@@ -1,5 +1,4 @@
 /* global chrome*/
-let video_url;//create to change the url of video snippet by ZZL
 let behaviorTypes = ["copy", "highlight", "video_snippet", "stay", "screenshot"];
 //The characters that have associated meanings in xml of suggestions that
 //need to be replaced. The replacement characters are contained as values
@@ -64,6 +63,7 @@ chrome.runtime.onInstalled.addListener(function () {
         }
     });
 });
+
 
 
 // When a tab just got created.

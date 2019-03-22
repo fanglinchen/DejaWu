@@ -1,0 +1,10 @@
+{
+  "presets": [
+    "react-app"
+  ],
+  "env": {
+    "development": {
+      "presets":["react-hmre"]
+    }
+  }
+}

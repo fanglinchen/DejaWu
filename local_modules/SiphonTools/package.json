@@ -1,0 +1,31 @@
+{
+  "name": "siphon-tools",
+  "version": "1.0.2",
+  "description": "A set of tools for annotating the web with Javascript",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BentoBrowser/SiphonTools.git"
+  },
+  "keywords": [
+    "annotation",
+    "highlighting",
+    "markup"
+  ],
+  "author": "Nathan Hahn <nhahn@andrew.cmu.edu>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/BentoBrowser/SiphonTools/issues"
+  },
+  "homepage": "https://github.com/BentoBrowser/SiphonTools#readme",
+  "dependencies": {
+    "lodash": "^4.17.11",
+    "rangy": "github:nhahn/rangy#master",
+    "uuid": "^3.3.2",
+    "xpath-dom": "^0.2.2",
+    "xpath-range": "^1.1.1"
+  }
+}

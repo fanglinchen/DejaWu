@@ -46,11 +46,17 @@ const options = {
         test: /\.html$/,
         loader: "html-loader",
         exclude: /node_modules/
-      }
+      },
+        {
+            test: /\.(js|jsx)$/,
+            loader: "babel-loader",
+            exclude: /node_modules/
+        }
     ]
   },
   resolve: {
-    alias: alias
+    alias: alias,
+    extensions: fileExtensions.map(extension => ("." + extension)).concat([".json", ".jsx", ".js", ".css"])
   },
   plugins: [
     // clean the build folder
