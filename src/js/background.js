@@ -117,6 +117,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             //one yet, create it.
             chrome.storage.local.get(tabUrl, function (urlEntry) {
                 //If this url has not been previously stored.
+                //merge the behavior of video and stay
                 if(!urlEntry[tabUrl])
                 {
                     console.log("Url of this tab has not been previously stored!", urlEntry);
@@ -129,6 +130,26 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                     //The previous behavioral information garnered.
                     let behavior = urlEntry[tabUrl];
                     console.log("Behavior ", behavior);
+                    let videoSnippet={};
+                    let rightPosition=null;
+                    if (behavior) {
+                        if (behavior["video_snippet"]) {
+                            videoSnippet = getMostValuableVideo(behavior["video_snippet"]);
+                            console.log(videoSnippet);
+                        }
+                        if (pastUrls.indexOf(tabUrl)===-1) {
+                            if (behavior["stay"]) {
+                                rightPosition = selectMostValuableStay(behavior["stay"]);
+                                console.log(rightPosition);
+                            }
+                        }
+                    }
+                    chrome.tabs.sendMessage(tabId, {
+                        url: tabUrl,
+                        "type":"new_url",
+                        "video": videoSnippet,
+                        "position": rightPosition
+                    }, function (response) {});
                     //Add the current time and associated query to this url.
                     let visits = behavior["visit"];
                     visits.push({visitTime: new Date(), query: query});
@@ -138,26 +159,6 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             //chrome.tabs.sendMessage(tabId, {url: tab.url}, function(response) {});
             pastUrls.push(tabUrl);
             saveUrlsToTab(pastUrls, tabId);
-        });
-        chrome.storage.local.get(tabUrl, function (result) {
-            let videoSnippet={};
-            let rightPosition=0;
-            let existingBehaviors = result[tabUrl];
-            if (existingBehaviors) {
-                if(existingBehaviors["video_snippet"]){
-                    videoSnippet = getMostValuableVideo(existingBehaviors["video_snippet"]);
-                    console.log(videoSnippet);
-                }
-                if(existingBehaviors["stay"]){
-                    rightPosition = selectMostValuableStay(existingBehaviors["stay"]);
-                }
-            }
-            chrome.tabs.sendMessage(tabId, {
-                url: tabUrl,
-                "type":"new_url",
-                "video": videoSnippet,
-                "position": rightPosition
-            }, function (response) {});
         });
     }
 });
@@ -378,17 +379,39 @@ function update(url, behaviorType, behavior)
  * @param array
  * @returns {*}
  */
-function selectMostValuableStay(array){
-    let stayPosition;
-    let longestTime=0;
+function selectMaxPosition(array){
+    let maxPosition=0;
     for (let i = 0; i <= array.length - 1; i++) {
-        if (array[i].duration > longestTime) {
-            longestTime = array[i].duration;
-            stayPosition=array[i].position;
+        if (array[i].position > maxPosition) {
+            maxPosition = array[i].position;
         }
-
     }
-    return stayPosition;
+    return maxPosition;
+}
+//Window maximization about 1000 a page,divide by 500 a part
+function selectMostValuableStay(array) {
+    let sumDuration = [];
+    let stayPosition=[];
+    let scrollTo;
+    let maxDuration=0;
+    let k = Math.ceil(selectMaxPosition(array)/ 500);
+    for (k; k >=0; k--) {
+        sumDuration[k]=0;
+        stayPosition[k]=0;
+        for (let i = 0; i <= array.length - 1; i++) {
+            if (array[i].position > 500 * (k - 1) && array[i].position <= 500 * k) {
+                sumDuration[k] = sumDuration[k] + array[i].duration;
+                stayPosition[k] = (array[i].position + stayPosition[k]) / 2
+            }
+        }
+    }
+    for(let j=0;j<=Math.ceil(selectMaxPosition(array)/ 500);j++){
+        if(sumDuration[j]>maxDuration){
+            scrollTo=stayPosition[j];
+            maxDuration=sumDuration[j];
+        }
+    }
+    return scrollTo;
 }
 
 function getMostValuableVideo(array) {

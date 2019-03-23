@@ -241,14 +241,19 @@ function mouseDownHandler(e) {
  */
 function scrollHandler() {
     endTime = new Date().getTime();
-    if (endTime - startTime > LONG_ENOUGH_MS) {
-        chrome.runtime.sendMessage({
-                "url": currentUrl,
-                "stay": {"position": lastPosition,
-                    "duration": endTime - startTime,
-                    "time": [new Date()]}
-            },
-            function (response) {});
+    if (!currentUrl.includes("youtube.com")) {
+        if (endTime - startTime > LONG_ENOUGH_MS) {
+            chrome.runtime.sendMessage({
+                    "url": currentUrl,
+                    "stay": {
+                        "position": lastPosition,
+                        "duration": endTime - startTime,
+                        "time": [new Date()]
+                    }
+                },
+                function (response) {
+                });
+        }
     }
     lastPosition = window.scrollY || window.pageYOffset
         || document.body.scrollTop + (document.documentElement && document.documentElement.scrollTop || 0);
@@ -409,8 +414,10 @@ chrome.runtime.onMessage.addListener( (message, sender, sendResponse) => {
         let videoResponse=message.video;
         let stayResponse=message.position;
         //if has code ,don't go page section;
-        if(!currentUrl.includes("#")){
-            goToPastPageSection(stayResponse);
+        if (!document.location.href.includes("#")) {
+            if (stayResponse) {
+                goToPastPageSection(stayResponse);
+            }
         }
         setTimeout(function () {
             console.log("new url:", message.url);
