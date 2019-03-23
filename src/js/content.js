@@ -15,6 +15,9 @@ const LONG_ENOUGH_MS = 8000;
 let ghostElement, startPos, startY;
 let _cptrWindow;
 let rect;
+let domContainerNode;
+
+var test;
 
 import React from 'react';
 
@@ -27,10 +30,22 @@ SiphonTools.initializeSelectors([
             let annotation = new Snippet(rect);
             console.log(annotation);
 
-            console.log("test keydown"); 
+            console.log("test keydown");
+
             document.addEventListener('keydown', keyDownHandler, false);
             document.addEventListener('mousedown', mouseDownHandler, false);
-            
+            document.addEventListener('mouseup', mouseUpHandler, false);
+
+            domContainerNode = document.createElement('div');
+            domContainerNode.setAttribute('id', 'test-div');
+            domContainerNode.style.position = 'fixed';
+
+//TODO: @yusen change here to update the position according to the snippet position.
+            domContainerNode.style.top = (rect.bottom)+"px";
+            domContainerNode.style.left = (rect.right)+ "px";
+            document.body.appendChild(domContainerNode);
+            ReactDOM.render(<Tooltip />, domContainerNode);
+
         }
     })
 ]);
@@ -46,6 +61,7 @@ function isPlayingYoutubeAd(){
 }
 
 
+
 /**
  * handle pressing esc to quit screenshot
  * @param {*} e 
@@ -58,10 +74,14 @@ function keyDownHandler(e) {
         document.removeEventListener('mousedown', mouseDownHandler, false);
         document.removeEventListener('keydown', keyDownHandler, false);
         _cptrWindow.parentNode.removeChild(_cptrWindow)
-        // _cptrWindow.remove()
-        
+
+        //remove react ui
+        document.body.removeChild(domContainerNode);
+
         return false;
     }
+
+
 }
 
 
@@ -122,39 +142,41 @@ function loadMarkers(start,end,duration) {
 function mouseUpHandler(e) {
     e.preventDefault();
 
-    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
-        y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
+    // const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+    //     y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
+    //
+    // //working with negative coordinates
+    // let _w = diff.x;
+    // let _h = diff.y;
+    // let _x = startPos.x;
+    // let _y = startY;
+    //
+    // if(parseInt(e.pageY) < startPos.y){
+    //     //top right
+    //     _h = Math.abs(parseInt(e.pageY)-startPos.y);
+    //     _y -= _h;
+    // }
+    // if(parseInt(e.pageX) < startPos.x){
+    //     //left bottom
+    //     _w = Math.abs(parseInt(e.pageX)-startPos.x);
+    //     _x -= _w;
+    // }
+    //
+    // document.removeEventListener('mousemove', mouseMoveHandler, false);
+    // document.removeEventListener('mouseup', mouseUpHandler, false);
+    //
+    // ghostElement.parentNode.removeChild(ghostElement);
+    // setTimeout(function() {
+    //     const coords = {
+    //         w: _w,
+    //         h: _h,
+    //         x: _x,
+    //         y: _y
+    //     };
+    //     endScreenshot(coords,false);
+    // }, 50);
 
-    //working with negative coordinates
-    let _w = diff.x;
-    let _h = diff.y;
-    let _x = startPos.x;
-    let _y = startY;
 
-    if(parseInt(e.pageY) < startPos.y){
-        //top right
-        _h = Math.abs(parseInt(e.pageY)-startPos.y);
-        _y -= _h;
-    }
-    if(parseInt(e.pageX) < startPos.x){
-        //left bottom
-        _w = Math.abs(parseInt(e.pageX)-startPos.x);
-        _x -= _w;
-    }
-
-    document.removeEventListener('mousemove', mouseMoveHandler, false);
-    document.removeEventListener('mouseup', mouseUpHandler, false);
-
-    ghostElement.parentNode.removeChild(ghostElement);
-    setTimeout(function() {
-        const coords = {
-            w: _w,
-            h: _h,
-            x: _x,
-            y: _y
-        };
-        endScreenshot(coords,false);
-    }, 50);
 
     return false;
 }
@@ -231,6 +253,7 @@ function mouseDownHandler(e) {
         document.removeEventListener('keydown', keyDownHandler, false);
         console.log("remove frome first");
         _cptrWindow.remove()
+        // test.hideButton();test.hideButton();
     }
 
     return false;
@@ -469,17 +492,11 @@ window.onbeforeunload = function () {
 };
 
 
-let domContainerNode = document.createElement('div');
-domContainerNode.setAttribute('id', 'test-div');
-domContainerNode.style.position = 'fixed';
-//TODO: @yusen change here to update the position according to the snippet position.
-domContainerNode.style.top = '100px';
-domContainerNode.style.left = '200px';
-document.body.appendChild(domContainerNode);
 
 
 
-ReactDOM.render(<Tooltip />, domContainerNode);
+
+
 document.addEventListener('copy', saveCopiedText);
 document.addEventListener('mouseup', saveHighlightedText);
 window.addEventListener('scroll', scrollHandler);
