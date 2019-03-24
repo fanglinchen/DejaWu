@@ -41,8 +41,8 @@ SiphonTools.initializeSelectors([
             domContainerNode.style.position = 'fixed';
 
 //TODO: @yusen change here to update the position according to the snippet position.
-            domContainerNode.style.top = (rect.bottom)+"px";
-            domContainerNode.style.left = (rect.right)+ "px";
+            domContainerNode.style.top = rect.bottom + "px";
+            domContainerNode.style.left = rect.right + "px";
             document.body.appendChild(domContainerNode);
             ReactDOM.render(<Tooltip />, domContainerNode);
 
@@ -142,41 +142,39 @@ function loadMarkers(start,end,duration) {
 function mouseUpHandler(e) {
     e.preventDefault();
 
-    // const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
-    //     y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
-    //
-    // //working with negative coordinates
-    // let _w = diff.x;
-    // let _h = diff.y;
-    // let _x = startPos.x;
-    // let _y = startY;
-    //
-    // if(parseInt(e.pageY) < startPos.y){
-    //     //top right
-    //     _h = Math.abs(parseInt(e.pageY)-startPos.y);
-    //     _y -= _h;
-    // }
-    // if(parseInt(e.pageX) < startPos.x){
-    //     //left bottom
-    //     _w = Math.abs(parseInt(e.pageX)-startPos.x);
-    //     _x -= _w;
-    // }
-    //
-    // document.removeEventListener('mousemove', mouseMoveHandler, false);
-    // document.removeEventListener('mouseup', mouseUpHandler, false);
-    //
-    // ghostElement.parentNode.removeChild(ghostElement);
-    // setTimeout(function() {
-    //     const coords = {
-    //         w: _w,
-    //         h: _h,
-    //         x: _x,
-    //         y: _y
-    //     };
-    //     endScreenshot(coords,false);
-    // }, 50);
+    const diff = {x: Math.abs(parseInt(e.pageX)-parseInt(ghostElement.style.left)),
+        y: Math.abs(parseInt(e.pageY)-parseInt(ghostElement.style.top))};
 
+    //working with negative coordinates
+    let _w = diff.x;
+    let _h = diff.y;
+    let _x = startPos.x;
+    let _y = startY;
 
+    if(parseInt(e.pageY) < startPos.y){
+        //top right
+        _h = Math.abs(parseInt(e.pageY)-startPos.y);
+        _y -= _h;
+    }
+    if(parseInt(e.pageX) < startPos.x){
+        //left bottom
+        _w = Math.abs(parseInt(e.pageX)-startPos.x);
+        _x -= _w;
+    }
+
+    document.removeEventListener('mousemove', mouseMoveHandler, false);
+    document.removeEventListener('mouseup', mouseUpHandler, false);
+
+    ghostElement.parentNode.removeChild(ghostElement);
+    setTimeout(function() {
+        const coords = {
+            w: _w,
+            h: _h,
+            x: _x,
+            y: _y
+        };
+        endScreenshot(coords,false);
+    }, 50);
 
     return false;
 }
@@ -253,7 +251,7 @@ function mouseDownHandler(e) {
         document.removeEventListener('keydown', keyDownHandler, false);
         console.log("remove frome first");
         _cptrWindow.remove()
-        // test.hideButton();test.hideButton();
+
     }
 
     return false;
